@@ -18,7 +18,7 @@ export const FamilyFormModal = ({
         kuldeviGu: familyToEdit?.kuldevi?.gu || initialAtak?.kuldevi?.gu || 'શ્રી આશાપુરા માતાજી',
         kuldeviEn: familyToEdit?.kuldevi?.en || initialAtak?.kuldevi?.en || 'Shree Ashapura Mataji',
         primaryMobile: familyToEdit?.primaryMobile || '',
-        currentCity: familyToEdit?.address?.currentCity?.gu || 'બાસ્પા',
+        currentCity: familyToEdit?.address?.currentCity?.gu || village?.name?.gu || '',
         streetAddress: familyToEdit?.address?.streetAddress || ''
     });
 
@@ -31,6 +31,10 @@ export const FamilyFormModal = ({
         setError('');
 
         const resolvedVillageId = village?._id || familyToEdit?.villageId?._id || familyToEdit?.villageId;
+        const vGu = village?.name?.gu || familyToEdit?.address?.nativeVillage?.gu || '';
+        const vEn = village?.name?.en || familyToEdit?.address?.nativeVillage?.en || '';
+        const finalCity = formData.currentCity || vGu;
+
         const payload = {
             villageId: resolvedVillageId,
             houseNumber: Number(formData.houseNumber),
@@ -39,10 +43,10 @@ export const FamilyFormModal = ({
             primaryMobile: formData.primaryMobile,
             address: {
                 nativeVillage: {
-                    gu: village?.name?.gu || familyToEdit?.address?.nativeVillage?.gu || 'બાસ્પા',
-                    en: village?.name?.en || familyToEdit?.address?.nativeVillage?.en || 'Baspa'
+                    gu: vGu,
+                    en: vEn
                 },
-                currentCity: { gu: formData.currentCity, en: formData.currentCity },
+                currentCity: { gu: finalCity, en: finalCity },
                 streetAddress: formData.streetAddress
             }
         };
@@ -186,7 +190,7 @@ export const FamilyFormModal = ({
                                 value={formData.currentCity}
                                 onChange={(e) => setFormData({ ...formData, currentCity: e.target.value })}
                                 className="form-input"
-                                placeholder="બાસ્પા / અમદાવાદ"
+                                placeholder={`${village?.name?.gu || 'ગામનું નામ'} / અમદાવાદ / સુરત`}
                             />
                         </div>
                     </div>

@@ -36,8 +36,8 @@ export const MoveMembersModal = ({
     const [newAtakEn, setNewAtakEn] = useState(sourceFamily.atak?.en || '');
     const [newKuldeviGu, setNewKuldeviGu] = useState(sourceFamily.kuldevi?.gu || '');
     const [newKuldeviEn, setNewKuldeviEn] = useState(sourceFamily.kuldevi?.en || '');
-    const [newCityGu, setNewCityGu] = useState(sourceFamily.address?.currentCity?.gu || 'બાસ્પા');
-    const [newCityEn, setNewCityEn] = useState(sourceFamily.address?.currentCity?.en || 'Baspa');
+    const [newCityGu, setNewCityGu] = useState(sourceFamily.address?.currentCity?.gu || sourceFamily.villageId?.name?.gu || '');
+    const [newCityEn, setNewCityEn] = useState(sourceFamily.address?.currentCity?.en || sourceFamily.villageId?.name?.en || '');
     const [newStreetAddress, setNewStreetAddress] = useState(sourceFamily.address?.streetAddress || '');
     const [newPrimaryMobile, setNewPrimaryMobile] = useState('');
     const [newHeadMemberId, setNewHeadMemberId] = useState('');
@@ -141,7 +141,10 @@ export const MoveMembersModal = ({
                     atak: { gu: newAtakGu, en: newAtakEn },
                     kuldevi: { gu: newKuldeviGu, en: newKuldeviEn },
                     address: {
-                        nativeVillage: sourceFamily.address?.nativeVillage || { gu: 'બાસ્પા', en: 'Baspa' },
+                        nativeVillage: sourceFamily.address?.nativeVillage || {
+                            gu: sourceFamily.villageId?.name?.gu || '',
+                            en: sourceFamily.villageId?.name?.en || ''
+                        },
                         currentCity: { gu: newCityGu, en: newCityEn },
                         streetAddress: newStreetAddress
                     },

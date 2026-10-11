@@ -53,7 +53,7 @@ export const MemberFormModal = ({
         maritalStatusKey: memberToEdit?.maritalStatus?.key || 'married',
         occupationTitle: memberToEdit?.occupation?.title || 'ખેતી',
         occupationCategory: memberToEdit?.occupation?.category || 'agriculture',
-        workCity: memberToEdit?.occupation?.workCity || 'બાસ્પા',
+        workCity: memberToEdit?.occupation?.workCity || family?.address?.currentCity?.gu || village?.name?.gu || '',
         mobileNumber: memberToEdit?.mobileNumber || '',
         email: memberToEdit?.email || '',
         isFamilyHead: memberToEdit?.isFamilyHead || false
@@ -342,7 +342,7 @@ export const MemberFormModal = ({
                                 value={formData.workCity}
                                 onChange={(e) => setFormData({ ...formData, workCity: e.target.value })}
                                 className="form-input"
-                                placeholder="બાસ્પા / અમદાવાદ / સુરત"
+                                placeholder={`${village?.name?.gu || 'ગામનું નામ'} / અમદાવાદ / સુરત`}
                             />
                         </div>
                     </div>
