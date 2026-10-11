@@ -1,6 +1,6 @@
 // Centralized API Service for Nadoda Connect Frontend
 
-const BASE_URL = '/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://nadoda-connect-backend.onrender.com/api' : '/api');
 
 /**
  * Helper to get active user ID or JWT auth header for requests
@@ -216,6 +216,11 @@ export const authApi = {
     updateRole: (id, payload) =>
         request(`/auth/users/${id}/role`, {
             method: 'PATCH',
+            body: JSON.stringify(payload)
+        }),
+    updateProfile: (payload) =>
+        request('/auth/profile', {
+            method: 'PUT',
             body: JSON.stringify(payload)
         })
 };

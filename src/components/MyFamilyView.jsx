@@ -15,7 +15,7 @@ import {
     RefreshCw,
     Trash2
 } from 'lucide-react';
-import { familyApi, memberApi } from '../services/api';
+import { familyApi, memberApi, authApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const MyFamilyView = ({
@@ -76,15 +76,7 @@ export const MyFamilyView = ({
         setUpdatingEmail(true);
         setEmailSuccess('');
         try {
-            const res = await fetch('/api/auth/profile', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${localStorage.getItem('nadoda_token')}`
-                },
-                body: JSON.stringify({ email: emailInput })
-            });
-            const data = await res.json();
+            const data = await authApi.updateProfile({ email: emailInput });
             if (data.success) {
                 setEmailSuccess('તમારું ઈમેલ સફળતાપૂર્વક અપડેટ થઈ ગયું છે!');
                 // Update local storage

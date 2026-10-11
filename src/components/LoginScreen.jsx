@@ -135,7 +135,7 @@ export const LoginScreen = () => {
                 {/* Brand Header */}
                 <div style={{ textAlign: 'center', marginBottom: '28px' }}>
                     <img
-                        src="/nododa_rajput.png"
+                        src={`${import.meta.env.BASE_URL}nododa_rajput.png`}
                         alt="શ્રી નાડોદા રાજપૂત સમાજ"
                         style={{
                             width: '84px',

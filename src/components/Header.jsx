@@ -18,7 +18,7 @@ export const Header = ({
                 {/* Brand / Title */}
                 <div className="header-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <img
-                        src="/nododa_rajput.png"
+                        src={`${import.meta.env.BASE_URL}nododa_rajput.png`}
                         alt="શ્રી નાડોદા રાજપૂત સમાજ"
                         style={{
                             width: '42px',
