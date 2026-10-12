@@ -89,7 +89,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Keep session active with periodic heartbeat every 2 minutes while user is logged in
+    useEffect(() => {
+        if (!token || !user) return;
+
+        // Immediate ping
+        authApi.heartbeat().catch(() => {});
+
+        const intervalId = setInterval(() => {
+            authApi.heartbeat().catch(() => {});
+        }, 2 * 60 * 1000);
+
+        return () => clearInterval(intervalId);
+    }, [token, user]);
+
     const logout = () => {
+        try {
+            authApi.logout().catch(() => {});
+        } catch {}
         setUser(null);
         setToken(null);
         localStorage.removeItem('nadoda_token');

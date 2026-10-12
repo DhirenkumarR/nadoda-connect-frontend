@@ -18,7 +18,13 @@ import {
     KeyRound,
     Eye,
     EyeOff,
-    Search
+    Search,
+    Radio,
+    Activity,
+    Smartphone,
+    Laptop,
+    Globe,
+    LogOut
 } from 'lucide-react';
 import { approvalApi, authApi, villageApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -33,7 +39,7 @@ export const AdminPortal = ({
     const { user, isSuperAdmin, isVillageAdmin, canManageVillage } = useAuth();
     const canManageSelectedVillage = village?._id ? canManageVillage(village._id) : false;
 
-    const [adminTab, setAdminTab] = useState('approvals'); // 'approvals', 'users', 'villages'
+    const [adminTab, setAdminTab] = useState('approvals'); // 'approvals', 'users', 'sessions', 'villages'
     const [statusFilter, setStatusFilter] = useState('pending'); // 'pending', 'approved', 'rejected', 'all'
     const [requests, setRequests] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(false);
@@ -70,6 +76,20 @@ export const AdminPortal = ({
         showPassword: false
     });
     const [createUserLoading, setCreateUserLoading] = useState(false);
+
+    // Active Sessions state (Super Admin only)
+    const [activeSessions, setActiveSessions] = useState([]);
+    const [activeSessionsStats, setActiveSessionsStats] = useState({
+        onlineCount: 0,
+        activeTodayCount: 0,
+        onlineAdminsCount: 0,
+        totalUsers: 0
+    });
+    const [loadingSessions, setLoadingSessions] = useState(false);
+    const [sessionSearchTerm, setSessionSearchTerm] = useState('');
+    const [sessionFilter, setSessionFilter] = useState('all'); // 'all', 'online', 'today', 'admins'
+    const [autoRefreshSessions, setAutoRefreshSessions] = useState(true);
+    const [terminatingUserId, setTerminatingUserId] = useState(null);
 
     // Create Village state (Super Admin)
     const [showCreateVillageModal, setShowCreateVillageModal] = useState(false);
@@ -233,6 +253,57 @@ export const AdminPortal = ({
         }
     };
 
+    // Fetch Active Sessions (Super Admin Only)
+    const fetchActiveSessions = async (silent = false) => {
+        if (!isSuperAdmin) return;
+        if (!silent) setLoadingSessions(true);
+        try {
+            const res = await authApi.getActiveSessions();
+            if (res.success) {
+                setActiveSessions(res.data || []);
+                if (res.stats) setActiveSessionsStats(res.stats);
+            }
+        } catch (err) {
+            console.error('Error fetching active sessions:', err);
+        } finally {
+            if (!silent) setLoadingSessions(false);
+        }
+    };
+
+    const handleTerminateSession = async (targetUser) => {
+        if (!window.confirm(`શું તમે ખરેખર (${targetUser.name || targetUser.mobileNumber}) નું લૉગિન સેશન સમાપ્ત કરવા માંગો છો?`)) {
+            return;
+        }
+        setTerminatingUserId(targetUser._id);
+        try {
+            const res = await authApi.terminateSession(targetUser._id);
+            if (res.success) {
+                alert(res.message || 'સેશન સફળતાપૂર્વક સમાપ્ત કરવામાં આવ્યું.');
+                fetchActiveSessions(true);
+            }
+        } catch (err) {
+            alert('Error: ' + (err.response?.message || err.message));
+        } finally {
+            setTerminatingUserId(null);
+        }
+    };
+
+    const formatRelativeTime = (dateString) => {
+        if (!dateString) return 'ક્યારેય નહીં (Never)';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffSec = Math.floor((now - date) / 1000);
+        if (diffSec < 60) return 'હમણાં જ (Just now)';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin} મિનિટ પહેલા`;
+        const diffHour = Math.floor(diffMin / 60);
+        if (diffHour < 24) return `${diffHour} કલાક પહેલા`;
+        const diffDays = Math.floor(diffHour / 24);
+        if (diffDays === 1) return 'ગઈકાલે (Yesterday)';
+        if (diffDays < 7) return `${diffDays} દિવસ પહેલા`;
+        return date.toLocaleDateString('gu-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
     useEffect(() => {
         if (!isSuperAdmin && !isVillageAdmin) return;
         fetchRequests();
@@ -243,6 +314,18 @@ export const AdminPortal = ({
             fetchUsers();
         }
     }, [adminTab, isSuperAdmin, isVillageAdmin]);
+
+    useEffect(() => {
+        if (adminTab === 'sessions' && isSuperAdmin) {
+            fetchActiveSessions();
+            if (autoRefreshSessions) {
+                const interval = setInterval(() => {
+                    fetchActiveSessions(true);
+                }, 15000); // Live refresh every 15s
+                return () => clearInterval(interval);
+            }
+        }
+    }, [adminTab, isSuperAdmin, autoRefreshSessions]);
 
     const handleApprove = async (reqId) => {
         setActionLoadingId(reqId);
@@ -507,6 +590,44 @@ export const AdminPortal = ({
                         {isSuperAdmin
                             ? 'વપરાશકર્તા & પાસવર્ડ સંચાલન (Users & Passwords)'
                             : 'સભ્યોના વપરાશકર્તા ખાતા & પાસવર્ડ (Member Users & Passwords)'}
+                    </button>
+                )}
+
+                {/* TAB 3: LIVE ACTIVE SESSIONS (SUPER ADMIN ONLY) */}
+                {isSuperAdmin && (
+                    <button
+                        onClick={() => setAdminTab('sessions')}
+                        style={{
+                            padding: '10px 16px',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            color: adminTab === 'sessions' ? '#10B981' : 'var(--text-secondary)',
+                            borderBottom: `2px solid ${adminTab === 'sessions' ? '#10B981' : 'transparent'}`,
+                            background: 'transparent',
+                            borderTop: 'none',
+                            borderLeft: 'none',
+                            borderRight: 'none',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: '#10B981',
+                            boxShadow: '0 0 8px #10B981',
+                            display: 'inline-block'
+                        }} />
+                        <Radio size={15} color="#10B981" />
+                        <span>કોણ લૉગિન છે? (Active Sessions)</span>
+                        {activeSessionsStats.onlineCount > 0 && (
+                            <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '1px 7px', borderRadius: '10px' }}>
+                                {activeSessionsStats.onlineCount} Online
+                            </span>
+                        )}
                     </button>
                 )}
             </div>
@@ -820,6 +941,450 @@ export const AdminPortal = ({
                                             </td>
                                         </tr>
                                     ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 3: LIVE ACTIVE LOGINS & SESSIONS (SUPER ADMIN ONLY) */}
+            {adminTab === 'sessions' && isSuperAdmin && (
+                <div>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(16, 185, 129, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#10B981'
+                                }}>
+                                    <Radio size={18} />
+                                </div>
+                                <h4 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#FFF', margin: 0 }}>
+                                    કોણ લૉગિન છે? (Currently Logged-In Users & Live Sessions)
+                                </h4>
+                            </div>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: 0 }}>
+                                સુપર એડમિન માટે લાઇવ મોનિટરિંગ: કયા વપરાશકર્તાઓ અત્યારે સિસ્ટમમાં સક્રિય અને લૉગિન છે તે જુઓ.
+                            </p>
+                        </div>
+
+                        {/* Top Controls: Auto Refresh & Refresh Button */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '0.775rem',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                padding: '6px 12px',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--border-subtle)'
+                            }}>
+                                <input
+                                    type="checkbox"
+                                    checked={autoRefreshSessions}
+                                    onChange={(e) => setAutoRefreshSessions(e.target.checked)}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                                <span>ઓટો-રિફ્રેશ (૧૫ સેકન્ડ)</span>
+                            </label>
+
+                            <button
+                                type="button"
+                                onClick={() => fetchActiveSessions(false)}
+                                disabled={loadingSessions}
+                                className="btn btn-secondary btn-sm"
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
+                            >
+                                <RefreshCw size={14} className={loadingSessions ? 'spin-icon' : ''} />
+                                <span>રિફ્રેશ (Refresh)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Metric Cards Grid */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                        gap: '14px',
+                        marginBottom: '22px'
+                    }}>
+                        {/* Card 1: Currently Online */}
+                        <div className="glass-panel" style={{
+                            padding: '16px 18px',
+                            border: '1px solid rgba(16, 185, 129, 0.35)',
+                            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(19, 30, 54, 0.95) 100%)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.75rem', color: '#6EE7B7', fontWeight: '600', textTransform: 'uppercase' }}>
+                                    હાલમાં ઓનલાઇન (Online Now)
+                                </span>
+                                <span style={{
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#10B981',
+                                    boxShadow: '0 0 10px #10B981',
+                                    display: 'inline-block'
+                                }} />
+                            </div>
+                            <div style={{ fontSize: '1.85rem', fontWeight: '800', color: '#FFF' }}>
+                                {activeSessionsStats.onlineCount}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                છેલ્લા ૧૫ મિનિટમાં સક્રિય
+                            </div>
+                        </div>
+
+                        {/* Card 2: Active Today */}
+                        <div className="glass-panel" style={{
+                            padding: '16px 18px',
+                            border: '1px solid rgba(59, 130, 246, 0.35)',
+                            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(19, 30, 54, 0.95) 100%)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.75rem', color: '#93C5FD', fontWeight: '600', textTransform: 'uppercase' }}>
+                                    આજે સક્રિય (Active Today)
+                                </span>
+                                <Activity size={16} color="#60A5FA" />
+                            </div>
+                            <div style={{ fontSize: '1.85rem', fontWeight: '800', color: '#FFF' }}>
+                                {activeSessionsStats.activeTodayCount}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                છેલ્લા ૨૪ કલાકમાં પ્રવૃત્તિ
+                            </div>
+                        </div>
+
+                        {/* Card 3: Admins Online */}
+                        <div className="glass-panel" style={{
+                            padding: '16px 18px',
+                            border: '1px solid rgba(245, 158, 11, 0.35)',
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(19, 30, 54, 0.95) 100%)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.75rem', color: '#FCD34D', fontWeight: '600', textTransform: 'uppercase' }}>
+                                    સક્રિય એડમિન (Admins Online)
+                                </span>
+                                <Shield size={16} color="var(--accent-amber)" />
+                            </div>
+                            <div style={{ fontSize: '1.85rem', fontWeight: '800', color: '#FFF' }}>
+                                {activeSessionsStats.onlineAdminsCount}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                Super / Village Admin
+                            </div>
+                        </div>
+
+                        {/* Card 4: Total Registered Accounts */}
+                        <div className="glass-panel" style={{
+                            padding: '16px 18px',
+                            border: '1px solid var(--border-subtle)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase' }}>
+                                    કુલ ખાતા (Total Users)
+                                </span>
+                                <Users size={16} color="var(--text-muted)" />
+                            </div>
+                            <div style={{ fontSize: '1.85rem', fontWeight: '800', color: '#FFF' }}>
+                                {activeSessionsStats.totalUsers}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                સિસ્ટમમાં કુલ રજિસ્ટર્ડ એકાઉન્ટ
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Filter Tabs & Search Bar */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                        marginBottom: '16px'
+                    }}>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {[
+                                { key: 'all', label: 'બધા સેશન્સ (All)' },
+                                { key: 'online', label: `🟢 ફક્ત ઓનલાઇન (${activeSessionsStats.onlineCount})` },
+                                { key: 'today', label: `🕒 આજે સક્રિય (${activeSessionsStats.activeTodayCount})` },
+                                { key: 'admins', label: '🛡️ એડમિન્સ (Admins)' }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    onClick={() => setSessionFilter(tab.key)}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{
+                                        background: sessionFilter === tab.key ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                                        color: sessionFilter === tab.key ? '#10B981' : 'var(--text-secondary)',
+                                        borderColor: sessionFilter === tab.key ? '#10B981' : 'var(--border-subtle)',
+                                        fontSize: '0.775rem'
+                                    }}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Search Input */}
+                        <div style={{ position: 'relative', width: '260px' }}>
+                            <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                            <input
+                                type="text"
+                                placeholder="નામ, મોબાઈલ, ગામ શોધો..."
+                                value={sessionSearchTerm}
+                                onChange={(e) => setSessionSearchTerm(e.target.value)}
+                                className="form-input"
+                                style={{ paddingLeft: '32px', paddingRight: '12px', fontSize: '0.825rem' }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Sessions Table */}
+                    <div className="glass-panel" style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                            <thead>
+                                <tr style={{
+                                    borderBottom: '1px solid var(--border-hover)',
+                                    color: 'var(--text-secondary)',
+                                    textTransform: 'uppercase',
+                                    fontSize: '0.725rem'
+                                }}>
+                                    <th style={{ padding: '12px 14px' }}>સ્થિતિ (Status)</th>
+                                    <th style={{ padding: '12px 14px' }}>વપરાશકર્તા (User)</th>
+                                    <th style={{ padding: '12px 14px' }}>રોલ (Role)</th>
+                                    <th style={{ padding: '12px 14px' }}>ગામ (Village)</th>
+                                    <th style={{ padding: '12px 14px' }}>ડિવાઇસ / પ્લેટફોર્મ</th>
+                                    <th style={{ padding: '12px 14px' }}>છેલ્લે સક્રિય (Last Active)</th>
+                                    <th style={{ padding: '12px 14px' }}>લૉગિન સમય (Login Time)</th>
+                                    <th style={{ padding: '12px 14px' }}>ક્રિયા (Action)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {activeSessions.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            {loadingSessions ? (
+                                                <div>
+                                                    <RefreshCw size={22} className="spin-icon" style={{ margin: '0 auto 8px' }} />
+                                                    <p>લાઇવ સેશન્સ લોડ થઈ રહ્યા છે...</p>
+                                                </div>
+                                            ) : (
+                                                'હાલમાં કોઈ સક્રિય સેશન મળ્યું નથી.'
+                                            )}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    activeSessions
+                                        .filter((s) => {
+                                            // Apply filter
+                                            if (sessionFilter === 'online' && !s.isOnline) return false;
+                                            if (sessionFilter === 'admins' && (s.role !== 'super_admin' && s.role !== 'village_admin')) return false;
+                                            if (sessionFilter === 'today') {
+                                                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                                                const activeAt = s.lastActiveAt ? new Date(s.lastActiveAt) : null;
+                                                const loginAt = s.lastLoginAt ? new Date(s.lastLoginAt) : null;
+                                                if ((!activeAt || activeAt < twentyFourHoursAgo) && (!loginAt || loginAt < twentyFourHoursAgo)) {
+                                                    return false;
+                                                }
+                                            }
+
+                                            // Apply search
+                                            if (sessionSearchTerm) {
+                                                const term = sessionSearchTerm.toLowerCase();
+                                                const villageNameGu = s.assignedVillage?.name?.gu || '';
+                                                const villageNameEn = s.assignedVillage?.name?.en || '';
+                                                const matchName = s.name && s.name.toLowerCase().includes(term);
+                                                const matchMobile = s.mobileNumber && s.mobileNumber.toLowerCase().includes(term);
+                                                const matchVillage = villageNameGu.toLowerCase().includes(term) || villageNameEn.toLowerCase().includes(term);
+                                                if (!matchName && !matchMobile && !matchVillage) return false;
+                                            }
+
+                                            return true;
+                                        })
+                                        .map((s) => {
+                                            const isCurrentUser = s._id === user?._id;
+                                            return (
+                                                <tr key={s._id} style={{
+                                                    borderBottom: '1px solid var(--border-subtle)',
+                                                    background: s.isOnline ? 'rgba(16, 185, 129, 0.04)' : 'transparent'
+                                                }}>
+                                                    {/* Status Column */}
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                        {s.isOnline ? (
+                                                            <span style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px',
+                                                                color: '#34D399',
+                                                                fontSize: '0.775rem',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                <span style={{
+                                                                    width: '8px',
+                                                                    height: '8px',
+                                                                    borderRadius: '50%',
+                                                                    backgroundColor: '#10B981',
+                                                                    boxShadow: '0 0 8px #10B981',
+                                                                    display: 'inline-block'
+                                                                }} />
+                                                                ઓનલાઇન (Online)
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px',
+                                                                color: 'var(--text-muted)',
+                                                                fontSize: '0.75rem'
+                                                            }}>
+                                                                <span style={{
+                                                                    width: '7px',
+                                                                    height: '7px',
+                                                                    borderRadius: '50%',
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                                                    display: 'inline-block'
+                                                                }} />
+                                                                ઓફલાઇન (Offline)
+                                                            </span>
+                                                        )}
+                                                    </td>
+
+                                                    {/* User Details */}
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <strong style={{ color: '#FFF' }}>{s.name || 'User'}</strong>
+                                                                {isCurrentUser && (
+                                                                    <span className="badge badge-amber" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>
+                                                                        તમે (You)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span style={{ color: '#34D399', fontSize: '0.775rem', fontWeight: '500' }}>
+                                                                {s.mobileNumber}
+                                                            </span>
+                                                            {s.email && (
+                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.725rem' }}>
+                                                                    {s.email}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Role */}
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                        <span className={`badge ${
+                                                            s.role === 'super_admin'
+                                                                ? 'badge-amber'
+                                                                : s.role === 'village_admin'
+                                                                ? 'badge-blue'
+                                                                : 'badge-slate'
+                                                        }`}>
+                                                            {s.role}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Village */}
+                                                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                                        {s.assignedVillage?.name?.gu || s.assignedVillage?.name?.en || 'બધા ગામો (Global)'}
+                                                    </td>
+
+                                                    {/* Device / Platform */}
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                                                            {s.device === 'Mobile' ? (
+                                                                <Smartphone size={15} color="#60A5FA" />
+                                                            ) : (
+                                                                <Laptop size={15} color="#FBBF24" />
+                                                            )}
+                                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                <span style={{ color: '#CBD5E1', fontSize: '0.775rem', fontWeight: '500' }}>
+                                                                    {s.device} ({s.os})
+                                                                </span>
+                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                                                    {s.browser} {s.lastIpAddress ? `• ${s.lastIpAddress}` : ''}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Last Active */}
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ color: s.isOnline ? '#34D399' : '#CBD5E1', fontWeight: s.isOnline ? '600' : '400', fontSize: '0.8rem' }}>
+                                                                {formatRelativeTime(s.lastActiveAt)}
+                                                            </span>
+                                                            {s.lastActiveAt && (
+                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                                                    {new Date(s.lastActiveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Last Login */}
+                                                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '0.775rem' }}>
+                                                        {s.lastLoginAt ? (
+                                                            <div>
+                                                                <div>{new Date(s.lastLoginAt).toLocaleDateString()}</div>
+                                                                <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                                                                    {new Date(s.lastLoginAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            '-'
+                                                        )}
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td style={{ padding: '12px 14px' }}>
+                                                        {isCurrentUser ? (
+                                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.725rem' }}>
+                                                                વર્તમાન સેશન
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleTerminateSession(s)}
+                                                                disabled={terminatingUserId === s._id}
+                                                                className="btn btn-secondary btn-sm"
+                                                                style={{
+                                                                    fontSize: '0.725rem',
+                                                                    padding: '4px 8px',
+                                                                    borderColor: 'rgba(244, 63, 94, 0.4)',
+                                                                    color: '#FB7185',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                                title="આ યુઝરનું સેશન સમાપ્ત કરો"
+                                                            >
+                                                                {terminatingUserId === s._id ? (
+                                                                    <RefreshCw size={12} className="spin-icon" />
+                                                                ) : (
+                                                                    <LogOut size={12} />
+                                                                )}
+                                                                <span>સેશન સમાપ્ત</span>
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                )}
                             </tbody>
                         </table>
                     </div>

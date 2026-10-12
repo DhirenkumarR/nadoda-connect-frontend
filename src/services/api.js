@@ -241,5 +241,12 @@ export const authApi = {
         request('/auth/users/create-from-member', {
             method: 'POST',
             body: JSON.stringify(payload)
-        })
+        }),
+    getActiveSessions: () => request('/auth/active-sessions'),
+    terminateSession: (userId) =>
+        request(`/auth/users/${userId}/terminate-session`, {
+            method: 'POST'
+        }),
+    heartbeat: () => request('/auth/heartbeat', { method: 'POST' }),
+    logout: () => request('/auth/logout', { method: 'POST' })
 };
