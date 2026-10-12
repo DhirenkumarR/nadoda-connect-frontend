@@ -232,5 +232,14 @@ export const authApi = {
         request('/auth/change-password', {
             method: 'PUT',
             body: JSON.stringify({ oldPassword, newPassword })
+        }),
+    getEligibleMembers: (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/auth/eligible-members${query ? `?${query}` : ''}`);
+    },
+    createUserFromMember: (payload) =>
+        request('/auth/users/create-from-member', {
+            method: 'POST',
+            body: JSON.stringify(payload)
         })
 };

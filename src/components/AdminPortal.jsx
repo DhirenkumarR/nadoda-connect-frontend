@@ -14,6 +14,7 @@ import {
     XCircle,
     Building2,
     Users,
+    UserPlus,
     KeyRound,
     Eye,
     EyeOff,
@@ -54,6 +55,21 @@ export const AdminPortal = ({
     const [adminNewPassword, setAdminNewPassword] = useState('');
     const [adminShowPassword, setAdminShowPassword] = useState(false);
     const [settingPasswordLoading, setSettingPasswordLoading] = useState(false);
+
+    // Create User from Member modal state
+    const [showCreateUserFromMemberModal, setShowCreateUserFromMemberModal] = useState(false);
+    const [memberSearchTerm, setMemberSearchTerm] = useState('');
+    const [eligibleMembers, setEligibleMembers] = useState([]);
+    const [loadingEligibleMembers, setLoadingEligibleMembers] = useState(false);
+    const [selectedMemberForUser, setSelectedMemberForUser] = useState(null);
+    const [createUserFormData, setCreateUserFormData] = useState({
+        mobileNumber: '',
+        email: '',
+        role: 'member',
+        password: 'Nadoda@2026',
+        showPassword: false
+    });
+    const [createUserLoading, setCreateUserLoading] = useState(false);
 
     // Create Village state (Super Admin)
     const [showCreateVillageModal, setShowCreateVillageModal] = useState(false);
@@ -131,6 +147,89 @@ export const AdminPortal = ({
             alert('Password setting error: ' + (err.response?.message || err.message));
         } finally {
             setSettingPasswordLoading(false);
+        }
+    };
+
+    const fetchEligibleMembers = async (search = '') => {
+        setLoadingEligibleMembers(true);
+        try {
+            const params = {};
+            if (search) params.search = search;
+            if (isVillageAdmin) {
+                const vId = user?.assignedVillageId?._id || user?.assignedVillageId;
+                if (vId) params.villageId = vId;
+            } else if (village?._id) {
+                params.villageId = village._id;
+            }
+            const res = await authApi.getEligibleMembers(params);
+            if (res.success) {
+                setEligibleMembers(res.data);
+            }
+        } catch (err) {
+            console.error('Error fetching eligible members:', err);
+        } finally {
+            setLoadingEligibleMembers(false);
+        }
+    };
+
+    const handleOpenCreateUserFromMember = () => {
+        setSelectedMemberForUser(null);
+        setMemberSearchTerm('');
+        setCreateUserFormData({
+            mobileNumber: '',
+            email: '',
+            role: 'member',
+            password: 'Nadoda@2026',
+            showPassword: false
+        });
+        setShowCreateUserFromMemberModal(true);
+        fetchEligibleMembers('');
+    };
+
+    const handleSelectMember = (member) => {
+        setSelectedMemberForUser(member);
+        setCreateUserFormData({
+            mobileNumber: member.mobileNumber || '',
+            email: member.email || '',
+            role: 'member',
+            password: 'Nadoda@2026',
+            showPassword: false
+        });
+    };
+
+    const handleCreateUserFromMemberSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedMemberForUser) return;
+        if (!createUserFormData.mobileNumber.trim()) {
+            alert('મોબાઈલ નંબર જરૂરી છે (Mobile number is required)');
+            return;
+        }
+        if (createUserFormData.password && createUserFormData.password.trim().length < 6) {
+            alert('પાસવર્ડ ઓછામાં ઓછો ૬ અક્ષરનો હોવો જોઈએ (Password must be at least 6 characters)');
+            return;
+        }
+
+        setCreateUserLoading(true);
+        try {
+            const payload = {
+                memberId: selectedMemberForUser._id,
+                mobileNumber: createUserFormData.mobileNumber.trim(),
+                email: createUserFormData.email ? createUserFormData.email.trim() : null,
+                role: createUserFormData.role,
+                password: createUserFormData.password.trim(),
+                name: selectedMemberForUser.fullName?.gu || selectedMemberForUser.fullName?.en || ''
+            };
+            const res = await authApi.createUserFromMember(payload);
+            if (res.success) {
+                alert(res.message || 'સભ્ય માટે યુઝર એકાઉન્ટ સફળતાપૂર્વક બની ગયું છે!');
+                setShowCreateUserFromMemberModal(false);
+                setSelectedMemberForUser(null);
+                fetchUsers();
+            }
+        } catch (err) {
+            alert('Error creating user: ' + (err.response?.message || err.message));
+        } finally {
+            setCreateUserLoading(false);
         }
     };
 
@@ -579,17 +678,40 @@ export const AdminPortal = ({
                             </p>
                         </div>
 
-                        {/* Search Input */}
-                        <div style={{ position: 'relative', width: '280px' }}>
-                            <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input
-                                type="text"
-                                placeholder="નામ, મોબાઈલ અથવા ઈમેલ શોધો..."
-                                value={userSearchTerm}
-                                onChange={(e) => setUserSearchTerm(e.target.value)}
-                                className="form-input"
-                                style={{ paddingLeft: '32px', paddingRight: '12px', fontSize: '0.825rem' }}
-                            />
+                        {/* Actions: Search & Create User from Member */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ position: 'relative', width: '240px' }}>
+                                <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="નામ, મોબાઈલ અથવા ઈમેલ શોધો..."
+                                    value={userSearchTerm}
+                                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                                    className="form-input"
+                                    style={{ paddingLeft: '32px', paddingRight: '12px', fontSize: '0.825rem' }}
+                                />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleOpenCreateUserFromMember}
+                                className="btn btn-primary"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '7px',
+                                    fontSize: '0.825rem',
+                                    padding: '7px 14px',
+                                    background: 'linear-gradient(135deg, #10B981, #059669)',
+                                    borderColor: '#10B981',
+                                    color: '#FFF',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <UserPlus size={16} />
+                                <span>+ સભ્યમાંથી યુઝર બનાવો (Create User from Member)</span>
+                            </button>
                         </div>
                     </div>
 
@@ -860,6 +982,340 @@ export const AdminPortal = ({
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* CREATE USER FROM MEMBER MODAL */}
+            {showCreateUserFromMemberModal && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(11, 17, 32, 0.85)',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '16px'
+                }}>
+                    <div className="modal-content" style={{
+                        maxWidth: '560px',
+                        width: '100%',
+                        background: 'rgba(19, 30, 54, 0.98)',
+                        border: '1px solid var(--border-hover)',
+                        borderRadius: 'var(--radius-xl)',
+                        padding: '24px',
+                        boxShadow: 'var(--shadow-lg), 0 0 35px rgba(16, 185, 129, 0.15)',
+                        animation: 'fadeIn 0.2s ease-out',
+                        maxHeight: '90vh',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(16, 185, 129, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#10B981'
+                                }}>
+                                    <UserPlus size={20} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#FFF', margin: 0 }}>
+                                        સભ્યમાંથી યુઝર બનાવો (Create User from Member)
+                                    </h3>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                                        ગામના સભ્ય પસંદ કરી તેમનું લોગિન એકાઉન્ટ અને પાસવર્ડ બનાવો
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowCreateUserFromMemberModal(false)}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Step 1: Select Member */}
+                        {!selectedMemberForUser ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
+                                <div style={{ position: 'relative' }}>
+                                    <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                                    <input
+                                        type="text"
+                                        placeholder="સભ્યનું નામ, મોબાઈલ, અટક અથવા ક્રમ નંબરથી શોધો..."
+                                        value={memberSearchTerm}
+                                        onChange={(e) => {
+                                            setMemberSearchTerm(e.target.value);
+                                            fetchEligibleMembers(e.target.value);
+                                        }}
+                                        className="form-input"
+                                        style={{ paddingLeft: '36px' }}
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <div style={{
+                                    maxHeight: '380px',
+                                    overflowY: 'auto',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                    paddingRight: '4px'
+                                }}>
+                                    {loadingEligibleMembers ? (
+                                        <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                            <RefreshCw size={24} className="spin-icon" style={{ margin: '0 auto 8px' }} />
+                                            <p style={{ fontSize: '0.85rem' }}>સભ્યોની યાદી લોડ થઈ રહી છે...</p>
+                                        </div>
+                                    ) : eligibleMembers.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                            <p style={{ fontSize: '0.85rem' }}>કોઈ યોગ્ય સભ્ય મળ્યા નથી.</p>
+                                        </div>
+                                    ) : (
+                                        eligibleMembers.map((m) => {
+                                            const memberName = m.fullName?.gu || m.fullName?.en || 'Member';
+                                            const villageName = m.villageId?.name?.gu || m.villageId?.name?.en || '';
+                                            return (
+                                                <div
+                                                    key={m._id}
+                                                    onClick={() => handleSelectMember(m)}
+                                                    style={{
+                                                        padding: '12px 14px',
+                                                        background: 'rgba(255, 255, 255, 0.03)',
+                                                        border: '1px solid var(--border-subtle)',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
+                                                        e.currentTarget.style.borderColor = '#10B981';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                                        e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <strong style={{ color: '#FFF', fontSize: '0.9rem' }}>{memberName}</strong>
+                                                            {m.serialNumber && (
+                                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.06)', padding: '1px 6px', borderRadius: '4px' }}>
+                                                                    #{m.serialNumber}
+                                                                </span>
+                                                            )}
+                                                            {villageName && (
+                                                                <span className="badge badge-blue" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                                                                    {villageName}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '12px' }}>
+                                                            <span>મોબાઈલ: <strong style={{ color: m.mobileNumber ? '#34D399' : '#FB7185' }}>{m.mobileNumber || 'નથી'}</strong></span>
+                                                            {m.email && <span>ઈમેલ: {m.email}</span>}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        {m.hasUserAccount ? (
+                                                            <span className="badge badge-amber" style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                ✅ એકાઉન્ટ છે
+                                                            </span>
+                                                        ) : (
+                                                            <span className="badge badge-emerald" style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                + પસંદ કરો
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            /* Step 2: Member Selected - Form */
+                            <form onSubmit={handleCreateUserFromMemberSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto' }}>
+                                {/* Selected Member Card */}
+                                <div style={{
+                                    padding: '12px 14px',
+                                    background: 'rgba(16, 185, 129, 0.06)',
+                                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                                    borderRadius: 'var(--radius-md)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: '600', marginBottom: '2px' }}>
+                                            પસંદ કરેલ સભ્ય (Selected Member):
+                                        </div>
+                                        <strong style={{ color: '#FFF', fontSize: '0.95rem' }}>
+                                            {selectedMemberForUser.fullName?.gu || selectedMemberForUser.fullName?.en || 'Member'}
+                                        </strong>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                            ગામ: {selectedMemberForUser.villageId?.name?.gu || selectedMemberForUser.villageId?.name?.en || 'N/A'}
+                                            {selectedMemberForUser.serialNumber ? ` | ક્રમ #${selectedMemberForUser.serialNumber}` : ''}
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedMemberForUser(null)}
+                                        style={{
+                                            background: 'rgba(255, 255, 255, 0.06)',
+                                            border: '1px solid var(--border-subtle)',
+                                            color: '#CBD5E1',
+                                            borderRadius: 'var(--radius-md)',
+                                            padding: '4px 8px',
+                                            fontSize: '0.725rem',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        ← બીજો સભ્ય
+                                    </button>
+                                </div>
+
+                                {/* Mobile Number */}
+                                <div>
+                                    <label className="form-label" style={{ marginBottom: '4px' }}>
+                                        મોબાઈલ નંબર (Login Mobile Number)*
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        value={createUserFormData.mobileNumber}
+                                        onChange={(e) => setCreateUserFormData({ ...createUserFormData, mobileNumber: e.target.value })}
+                                        placeholder="દા.ત. 9876543210"
+                                        className="form-input"
+                                    />
+                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '3px', margin: 0 }}>
+                                        આ મોબાઈલ નંબરથી સભ્ય લૉગિન કરશે.
+                                    </p>
+                                </div>
+
+                                {/* Email */}
+                                <div>
+                                    <label className="form-label" style={{ marginBottom: '4px' }}>
+                                        ઈમેલ (Email Address - Optional)
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={createUserFormData.email}
+                                        onChange={(e) => setCreateUserFormData({ ...createUserFormData, email: e.target.value })}
+                                        placeholder="member@example.com"
+                                        className="form-input"
+                                    />
+                                </div>
+
+                                {/* Role Selector (Super Admin Only) */}
+                                {isSuperAdmin && (
+                                    <div>
+                                        <label className="form-label" style={{ marginBottom: '4px' }}>
+                                            રોલ (User Role)*
+                                        </label>
+                                        <select
+                                            value={createUserFormData.role}
+                                            onChange={(e) => setCreateUserFormData({ ...createUserFormData, role: e.target.value })}
+                                            className="form-select"
+                                        >
+                                            <option value="member">સામાન્ય સભ્ય (Member)</option>
+                                            <option value="village_admin">ગામ એડમિન (Village Admin)</option>
+                                            <option value="super_admin">સુપર એડમિન (Super Admin)</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                {/* Password */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                        <label className="form-label" style={{ marginBottom: 0 }}>
+                                            પ્રારંભિક પાસવર્ડ (Initial Password - Min 6 chars)*
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCreateUserFormData({ ...createUserFormData, password: 'Nadoda@2026' })}
+                                            style={{ fontSize: '0.725rem', color: '#10B981', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '500' }}
+                                        >
+                                            + Nadoda@2026 લખો
+                                        </button>
+                                    </div>
+
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={createUserFormData.showPassword ? 'text' : 'password'}
+                                            required
+                                            minLength={6}
+                                            value={createUserFormData.password}
+                                            onChange={(e) => setCreateUserFormData({ ...createUserFormData, password: e.target.value })}
+                                            placeholder="નવો પાસવર્ડ દાખલ કરો"
+                                            className="form-input"
+                                            style={{ paddingRight: '40px' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setCreateUserFormData({ ...createUserFormData, showPassword: !createUserFormData.showPassword })}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '12px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                color: 'var(--text-muted)',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {createUserFormData.showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                    <p style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                        આ પાસવર્ડ સેટ થતાં જ સભ્ય પોતાના મોબાઈલ નંબર અને આ પાસવર્ડથી સીધા લૉગિન કરી શકશે.
+                                    </p>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedMemberForUser(null)}
+                                        className="btn btn-secondary"
+                                        style={{ flex: 1 }}
+                                    >
+                                        પાછા જાઓ (Back)
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={createUserLoading}
+                                        className="btn btn-primary"
+                                        style={{
+                                            flex: 1.5,
+                                            background: 'linear-gradient(135deg, #10B981, #059669)',
+                                            borderColor: '#10B981'
+                                        }}
+                                    >
+                                        {createUserLoading ? (
+                                            <>
+                                                <RefreshCw size={14} className="spin-icon" /> ખાતું બની રહ્યું છે...
+                                            </>
+                                        ) : (
+                                            'યુઝર બનાવો (Create User)'
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}
