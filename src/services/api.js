@@ -222,5 +222,15 @@ export const authApi = {
         request('/auth/profile', {
             method: 'PUT',
             body: JSON.stringify(payload)
+        }),
+    adminSetPassword: (userId, newPassword) =>
+        request(`/auth/users/${userId}/set-password`, {
+            method: 'POST',
+            body: JSON.stringify({ newPassword })
+        }),
+    changePassword: (oldPassword, newPassword) =>
+        request('/auth/change-password', {
+            method: 'PUT',
+            body: JSON.stringify({ oldPassword, newPassword })
         })
 };

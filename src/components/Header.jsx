@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Shield, ShieldAlert, User, ChevronDown, Check, Building2, MapPin, LogOut } from 'lucide-react';
+import { Shield, ShieldAlert, User, ChevronDown, Check, Building2, MapPin, LogOut, KeyRound } from 'lucide-react';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const Header = ({
     activeTab,
@@ -11,6 +12,7 @@ export const Header = ({
 }) => {
     const { user, logout, isSuperAdmin, isVillageAdmin } = useAuth();
     const [villageDropdownOpen, setVillageDropdownOpen] = useState(false);
+    const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
     return (
         <header className="header-container">
@@ -171,11 +173,32 @@ export const Header = ({
                         </div>
 
                         <button
+                            onClick={() => setShowChangePasswordModal(true)}
+                            title="પાસવર્ડ બદલો (Change Password)"
+                            style={{
+                                marginLeft: '6px',
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                background: 'rgba(245, 158, 11, 0.12)',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                color: 'var(--accent-amber)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.75rem',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <KeyRound size={13} />
+                            <span className="hide-mobile">પાસવર્ડ બદલો</span>
+                        </button>
+
+                        <button
                             onClick={logout}
                             title="લૉગઆઉટ કરો (Logout)"
                             style={{
-                                marginLeft: '8px',
-                                padding: '6px',
+                                marginLeft: '4px',
+                                padding: '6px 10px',
                                 borderRadius: '6px',
                                 background: 'rgba(244, 63, 94, 0.12)',
                                 border: '1px solid rgba(244, 63, 94, 0.3)',
@@ -243,6 +266,10 @@ export const Header = ({
                     </button>
                 )}
             </div>
+            <ChangePasswordModal
+                isOpen={showChangePasswordModal}
+                onClose={() => setShowChangePasswordModal(false)}
+            />
         </header>
     );
 };

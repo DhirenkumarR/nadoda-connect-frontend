@@ -13,7 +13,11 @@ import {
     CheckCircle2,
     XCircle,
     Building2,
-    Users
+    Users,
+    KeyRound,
+    Eye,
+    EyeOff,
+    Search
 } from 'lucide-react';
 import { approvalApi, authApi, villageApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -40,9 +44,16 @@ export const AdminPortal = ({
     const [rejectionReason, setRejectionReason] = useState('');
     const [adminNotes, setAdminNotes] = useState('');
 
-    // User management state (Super Admin)
+    // User management state (Super Admin & Village Admin)
     const [usersList, setUsersList] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
+
+    // Set Password Modal state
+    const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
+    const [adminNewPassword, setAdminNewPassword] = useState('');
+    const [adminShowPassword, setAdminShowPassword] = useState(false);
+    const [settingPasswordLoading, setSettingPasswordLoading] = useState(false);
 
     // Create Village state (Super Admin)
     const [showCreateVillageModal, setShowCreateVillageModal] = useState(false);
@@ -85,9 +96,9 @@ export const AdminPortal = ({
         }
     };
 
-    // Fetch users (Super Admin only)
+    // Fetch users (Super Admin & Village Admin)
     const fetchUsers = async () => {
-        if (!isSuperAdmin) return;
+        if (!isSuperAdmin && !isVillageAdmin) return;
         setLoadingUsers(true);
         try {
             const res = await authApi.getUsers();
@@ -101,16 +112,38 @@ export const AdminPortal = ({
         }
     };
 
+    const handleAdminSetPasswordSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedUserForPassword || adminNewPassword.trim().length < 6) {
+            alert('પાસવર્ડ ઓછામાં ઓછો ૬ અક્ષરનો હોવો જોઈએ (Password must be at least 6 characters)');
+            return;
+        }
+        setSettingPasswordLoading(true);
+        try {
+            const res = await authApi.adminSetPassword(selectedUserForPassword._id, adminNewPassword.trim());
+            if (res.success) {
+                alert(res.message || 'પાસવર્ડ સફળતાપૂર્વક સેટ થઈ ગયો છે!');
+                setSelectedUserForPassword(null);
+                setAdminNewPassword('');
+                fetchUsers();
+            }
+        } catch (err) {
+            alert('Password setting error: ' + (err.response?.message || err.message));
+        } finally {
+            setSettingPasswordLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (!isSuperAdmin && !isVillageAdmin) return;
         fetchRequests();
     }, [statusFilter, isVillageAdmin, user, isSuperAdmin]);
 
     useEffect(() => {
-        if (adminTab === 'users' && isSuperAdmin) {
+        if (adminTab === 'users' && (isSuperAdmin || isVillageAdmin)) {
             fetchUsers();
         }
-    }, [adminTab, isSuperAdmin]);
+    }, [adminTab, isSuperAdmin, isVillageAdmin]);
 
     const handleApprove = async (reqId) => {
         setActionLoadingId(reqId);
@@ -361,7 +394,7 @@ export const AdminPortal = ({
                     મંજૂરી અરજીઓ (Approval Requests)
                 </button>
 
-                {isSuperAdmin && (
+                {(isSuperAdmin || isVillageAdmin) && (
                     <button
                         onClick={() => setAdminTab('users')}
                         style={{
@@ -372,7 +405,9 @@ export const AdminPortal = ({
                             borderBottom: `2px solid ${adminTab === 'users' ? 'var(--accent-amber)' : 'transparent'}`
                         }}
                     >
-                        વપરાશકર્તા & એડમિન મેનેજમેન્ટ (User Roles)
+                        {isSuperAdmin
+                            ? 'વપરાશકર્તા & પાસવર્ડ સંચાલન (Users & Passwords)'
+                            : 'સભ્યોના વપરાશકર્તા ખાતા & પાસવર્ડ (Member Users & Passwords)'}
                     </button>
                 )}
             </div>
@@ -529,16 +564,33 @@ export const AdminPortal = ({
                 </div>
             )}
 
-            {/* TAB 2: USER MANAGEMENT (SUPER ADMIN) */}
-            {adminTab === 'users' && isSuperAdmin && (
+            {/* TAB 2: USER MANAGEMENT & PASSWORD SETTING */}
+            {adminTab === 'users' && (isSuperAdmin || isVillageAdmin) && (
                 <div>
-                    <div style={{ marginBottom: '14px' }}>
-                        <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#FFF' }}>
-                            વપરાશકર્તા રોલ સોંપણી / User Roles & Village Assignments
-                        </h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            ગામ એડમિન નિયુક્ત કરો (Assign Village Admins scoped to a village)
-                        </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                        <div>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#FFF', margin: 0 }}>
+                                {isSuperAdmin
+                                    ? 'વપરાશકર્તા & પાસવર્ડ સંચાલન (User Accounts & Direct Password Setup)'
+                                    : `તમારા ગામ (${village?.name?.gu || ''}) ના સભ્યોના વપરાશકર્તા ખાતા & પાસવર્ડ`}
+                            </h4>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                એડમિન સભ્યો માટે સીધો પાસવર્ડ સેટ કરી શકે છે, જેથી સભ્ય કોઈપણ સમસ્યા વગર સીધા લૉગિન કરી શકે.
+                            </p>
+                        </div>
+
+                        {/* Search Input */}
+                        <div style={{ position: 'relative', width: '280px' }}>
+                            <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                            <input
+                                type="text"
+                                placeholder="નામ, મોબાઈલ અથવા ઈમેલ શોધો..."
+                                value={userSearchTerm}
+                                onChange={(e) => setUserSearchTerm(e.target.value)}
+                                className="form-input"
+                                style={{ paddingLeft: '32px', paddingRight: '12px', fontSize: '0.825rem' }}
+                            />
+                        </div>
                     </div>
 
                     <div className="glass-panel" style={{ overflowX: 'auto' }}>
@@ -552,54 +604,262 @@ export const AdminPortal = ({
                                 }}>
                                     <th style={{ padding: '12px 14px' }}>નામ / Name</th>
                                     <th style={{ padding: '12px 14px' }}>મોબાઈલ</th>
-                                    <th style={{ padding: '12px 14px' }}>હાલનો રોલ</th>
-                                    <th style={{ padding: '12px 14px' }}>ફાળવેલ ગામ (Assigned Village)</th>
-                                    <th style={{ padding: '12px 14px' }}>ક્રિયા</th>
+                                    <th style={{ padding: '12px 14px' }}>ઈમેલ</th>
+                                    <th style={{ padding: '12px 14px' }}>રોલ (Role)</th>
+                                    <th style={{ padding: '12px 14px' }}>ફાળવેલ ગામ (Village)</th>
+                                    <th style={{ padding: '12px 14px' }}>પાસવર્ડ સ્ટેટસ</th>
+                                    <th style={{ padding: '12px 14px' }}>ક્રિયા (Action)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {usersList.map((u) => (
-                                    <tr key={u._id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                        <td style={{ padding: '12px 14px', fontWeight: '600', color: '#FFF' }}>
-                                            {u.name || 'User'}
-                                        </td>
-                                        <td style={{ padding: '12px 14px', color: '#34D399' }}>
-                                            {u.mobileNumber}
-                                        </td>
-                                        <td style={{ padding: '12px 14px' }}>
-                                            <span className={`badge ${
-                                                u.role === 'super_admin'
-                                                    ? 'badge-amber'
-                                                    : u.role === 'village_admin'
-                                                    ? 'badge-blue'
-                                                    : 'badge-slate'
-                                            }`}>
-                                                {u.role}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
-                                            {u.assignedVillageId?.name?.gu || u.assignedVillageId?.name?.en || 'બધા ગામો (Global)'}
-                                        </td>
-                                        <td style={{ padding: '12px 14px' }}>
-                                            <select
-                                                defaultValue={u.role}
-                                                onChange={(e) => {
-                                                    const role = e.target.value;
-                                                    const vId = role === 'village_admin' ? (villages[0]?._id || null) : null;
-                                                    handleRoleChange(u._id, role, vId);
-                                                }}
-                                                className="form-select"
-                                                style={{ width: '160px', padding: '4px 8px' }}
-                                            >
-                                                <option value="super_admin">Super Admin</option>
-                                                <option value="village_admin">Village Admin</option>
-                                                <option value="member">Member</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {usersList
+                                    .filter((u) => {
+                                        if (!userSearchTerm) return true;
+                                        const term = userSearchTerm.toLowerCase();
+                                        return (
+                                            (u.name && u.name.toLowerCase().includes(term)) ||
+                                            (u.mobileNumber && u.mobileNumber.toLowerCase().includes(term)) ||
+                                            (u.email && u.email.toLowerCase().includes(term))
+                                        );
+                                    })
+                                    .map((u) => (
+                                        <tr key={u._id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <td style={{ padding: '12px 14px', fontWeight: '600', color: '#FFF' }}>
+                                                {u.name || 'User'}
+                                            </td>
+                                            <td style={{ padding: '12px 14px', color: '#34D399', fontWeight: '500' }}>
+                                                {u.mobileNumber}
+                                            </td>
+                                            <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                                {u.email || <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                                            </td>
+                                            <td style={{ padding: '12px 14px' }}>
+                                                <span className={`badge ${
+                                                    u.role === 'super_admin'
+                                                        ? 'badge-amber'
+                                                        : u.role === 'village_admin'
+                                                        ? 'badge-blue'
+                                                        : 'badge-slate'
+                                                }`}>
+                                                    {u.role}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                                {u.assignedVillageId?.name?.gu || u.assignedVillageId?.name?.en || 'બધા ગામો (Global)'}
+                                            </td>
+                                            <td style={{ padding: '12px 14px' }}>
+                                                {u.isPasswordSet ? (
+                                                    <span className="badge badge-emerald" style={{ fontSize: '0.725rem' }}>
+                                                        <CheckCircle2 size={12} /> સેટ કરેલ (Active)
+                                                    </span>
+                                                ) : (
+                                                    <span className="badge badge-amber" style={{ fontSize: '0.725rem' }}>
+                                                        <Clock size={12} /> પાસવર્ડ બાકી (Not set)
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '12px 14px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {/* Set Password Button (Super Admin can set for all, Village Admin sets for members) */}
+                                                    {(isSuperAdmin || (isVillageAdmin && u.role === 'member')) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSelectedUserForPassword(u);
+                                                                setAdminNewPassword('');
+                                                                setAdminShowPassword(false);
+                                                            }}
+                                                            className="btn btn-primary btn-sm"
+                                                            style={{ fontSize: '0.75rem', padding: '5px 10px' }}
+                                                            title="આ સભ્ય માટે પાસવર્ડ સેટ કરો"
+                                                        >
+                                                            <KeyRound size={13} /> પાસવર્ડ સેટ કરો
+                                                        </button>
+                                                    )}
+
+                                                    {/* Role Dropdown (Super Admin only) */}
+                                                    {isSuperAdmin && (
+                                                        <select
+                                                            defaultValue={u.role}
+                                                            onChange={(e) => {
+                                                                const role = e.target.value;
+                                                                const vId = role === 'village_admin' ? (villages[0]?._id || null) : null;
+                                                                handleRoleChange(u._id, role, vId);
+                                                            }}
+                                                            className="form-select"
+                                                            style={{ width: '135px', padding: '4px 6px', fontSize: '0.75rem' }}
+                                                        >
+                                                            <option value="super_admin">Super Admin</option>
+                                                            <option value="village_admin">Village Admin</option>
+                                                            <option value="member">Member</option>
+                                                        </select>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* DIRECT PASSWORD SET MODAL FOR ADMIN */}
+            {selectedUserForPassword && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(11, 17, 32, 0.85)',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '16px'
+                }}>
+                    <div className="modal-content" style={{
+                        maxWidth: '440px',
+                        width: '100%',
+                        background: 'rgba(19, 30, 54, 0.98)',
+                        border: '1px solid var(--border-hover)',
+                        borderRadius: 'var(--radius-xl)',
+                        padding: '24px',
+                        boxShadow: 'var(--shadow-lg), 0 0 35px rgba(245, 158, 11, 0.15)',
+                        animation: 'fadeIn 0.2s ease-out'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(245, 158, 11, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--accent-amber)'
+                                }}>
+                                    <KeyRound size={20} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#FFF', margin: 0 }}>
+                                        સભ્ય પાસવર્ડ સેટ કરો (Direct Password Setup)
+                                    </h3>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                                        સભ્ય માટે સીધો પાસવર્ડ બનાવી આપો
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedUserForPassword(null)}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* User Summary Box */}
+                        <div style={{
+                            padding: '12px 14px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-md)',
+                            marginBottom: '18px',
+                            fontSize: '0.825rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px'
+                        }}>
+                            <div>
+                                <span style={{ color: 'var(--text-muted)' }}>સભ્ય નામ: </span>
+                                <strong style={{ color: '#FFF' }}>{selectedUserForPassword.name || 'User'}</strong>
+                            </div>
+                            <div>
+                                <span style={{ color: 'var(--text-muted)' }}>મોબાઈલ: </span>
+                                <strong style={{ color: '#34D399' }}>{selectedUserForPassword.mobileNumber}</strong>
+                            </div>
+                            {selectedUserForPassword.email && (
+                                <div>
+                                    <span style={{ color: 'var(--text-muted)' }}>ઈમેલ: </span>
+                                    <span style={{ color: '#CBD5E1' }}>{selectedUserForPassword.email}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <form onSubmit={handleAdminSetPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                    <label className="form-label" style={{ marginBottom: 0 }}>
+                                        નવો પાસવર્ડ (New Password - Min 6 chars)*
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAdminNewPassword('Nadoda@2026')}
+                                        style={{ fontSize: '0.725rem', color: 'var(--accent-amber)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '500' }}
+                                    >
+                                        + Nadoda@2026 લખો
+                                    </button>
+                                </div>
+
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={adminShowPassword ? 'text' : 'password'}
+                                        required
+                                        minLength={6}
+                                        value={adminNewPassword}
+                                        onChange={(e) => setAdminNewPassword(e.target.value)}
+                                        placeholder="નવો પાસવર્ડ દાખલ કરો"
+                                        className="form-input"
+                                        style={{ paddingRight: '40px' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setAdminShowPassword(!adminShowPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '12px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            color: 'var(--text-muted)',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {adminShowPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                                <p style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                    આ પાસવર્ડ સેટ કર્યા પછી સભ્ય પોતાનો મોબાઈલ અને આ પાસવર્ડ વાપરીને સીધા જ લૉગિન કરી શકશે.
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedUserForPassword(null)}
+                                    className="btn btn-secondary"
+                                    style={{ flex: 1 }}
+                                >
+                                    રદ કરો (Cancel)
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={settingPasswordLoading}
+                                    className="btn btn-primary"
+                                    style={{ flex: 1.5 }}
+                                >
+                                    {settingPasswordLoading ? (
+                                        <>
+                                            <RefreshCw size={14} className="spin-icon" /> સેવિંગ...
+                                        </>
+                                    ) : (
+                                        'પાસવર્ડ સેટ કરો (Save)'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
