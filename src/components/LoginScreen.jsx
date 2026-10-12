@@ -72,6 +72,9 @@ export const LoginScreen = () => {
             const res = await forgotPassword(forgotIdentifier);
             if (res.success) {
                 setSuccessMessage(res.message || 'વેરિફિકેશન કોડ સફળતાપૂર્વક મોકલવામાં આવ્યો છે.');
+                if (res.otp) {
+                    setOtp(String(res.otp));
+                }
                 setForgotStep(2);
             } else {
                 setErrorMessage(res.message || 'સભ્ય મળ્યા નથી. કૃપા કરીને એડમિનનો સંપર્ક કરો.');
