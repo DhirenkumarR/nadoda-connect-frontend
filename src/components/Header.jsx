@@ -36,10 +36,10 @@ export const Header = ({
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <h1 style={{ fontSize: '1.15rem', fontWeight: '700', letterSpacing: '-0.01em', color: '#FFF' }}>
-                                નાડોદા કનેક્ટ
+                                નાડોદા રાજપૂત કનેક્ટ
                             </h1>
                             <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', fontWeight: '400' }}>
-                                Nadoda Connect
+                                Nadoda Rajput Connect
                             </span>
                             <span className="badge badge-amber hide-mobile" style={{ fontSize: '0.675rem' }}>
                                 Directory

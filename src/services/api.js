@@ -1,4 +1,4 @@
-// Centralized API Service for Nadoda Connect Frontend
+// Centralized API Service for Nadoda Rajput Connect Frontend
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://nadoda-connect-backend.onrender.com/api' : '/api');
 

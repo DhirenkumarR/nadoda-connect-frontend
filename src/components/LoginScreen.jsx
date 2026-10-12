@@ -154,7 +154,7 @@ export const LoginScreen = () => {
                         શ્રી નાડોદા રાજપૂત સમાજ
                     </h2>
                     <p style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', fontWeight: '600', marginTop: '2px' }}>
-                        Nadoda Connect Community Portal
+                        Nadoda Rajput Connect Community Portal
                     </p>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
                         <span className="badge badge-emerald" style={{ fontSize: '0.725rem' }}>

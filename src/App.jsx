@@ -244,7 +244,7 @@ function AppContent() {
                 {loadingVillage ? (
                     <div style={{ textAlign: 'center', padding: '80px', color: 'var(--text-secondary)' }}>
                         <div style={{ fontSize: '1.2rem', fontWeight: '600' }}>
-                            પ્લેટફોર્મ ડેટા લોડ થઈ રહ્યો છે... (Loading Nadoda Connect)
+                            પ્લેટફોર્મ ડેટા લોડ થઈ રહ્યો છે... (Loading Nadoda Rajput Connect)
                         </div>
                     </div>
                 ) : (
@@ -367,7 +367,7 @@ function AppContent() {
             }}>
                 <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
-                        <strong>શ્રી નાડોદા રાજપૂત સમાજ</strong> • Nadoda Connect Platform
+                        <strong>શ્રી નાડોદા રાજપૂત સમાજ</strong> • Nadoda Rajput Connect Platform
                     </div>
                     <div>
                         ડેટાબેઝ આધારિત વહીવટ & વંશાવળી નિર્દેશિકા • Digital Community Directory
