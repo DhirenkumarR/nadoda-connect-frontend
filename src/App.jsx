@@ -298,18 +298,10 @@ function AppContent() {
                     </div>
                 ) : (
                     <>
-                        {/* Village Stats Bar (Counts computed dynamically from DB) */}
-                        <VillageStatsBar
-                            village={selectedVillage}
-                            stats={villageStats}
-                            onRefresh={fetchStats}
-                        />
-
                         {/* View Content depending on active tab */}
                         {activeTab === 'hierarchy' && (
                             <HierarchyView
                                 village={selectedVillage}
-                                villageStats={villageStats}
                                 refreshTrigger={dataVersion}
                                 targetFamily={targetFamily}
                                 onClearTargetFamily={() => setTargetFamily(null)}
@@ -344,11 +336,18 @@ function AppContent() {
                         )}
 
                         {activeTab === 'demographics' && (
-                            <DemographicsView
-                                village={selectedVillage}
-                                stats={villageStats}
-                                refreshTrigger={dataVersion}
-                            />
+                            <>
+                                <VillageStatsBar
+                                    village={selectedVillage}
+                                    stats={villageStats}
+                                    onRefresh={fetchStats}
+                                />
+                                <DemographicsView
+                                    village={selectedVillage}
+                                    stats={villageStats}
+                                    refreshTrigger={dataVersion}
+                                />
+                            </>
                         )}
 
                         {activeTab === 'admin' && (isSuperAdmin || isVillageAdmin) && (
