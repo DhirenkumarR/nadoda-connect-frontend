@@ -12,7 +12,7 @@ import { MemberDetailModal } from './components/MemberDetailModal';
 import { FamilyFormModal } from './components/FamilyFormModal';
 import { MemberFormModal } from './components/MemberFormModal';
 import { NotFoundScreen } from './components/NotFoundScreen';
-import { villageApi } from './services/api';
+import { villageApi, memberApi } from './services/api';
 
 const VALID_TABS = ['hierarchy', 'members', 'my-family', 'demographics', 'admin'];
 const BASE_PATH = import.meta.env.BASE_URL || '/';
@@ -223,6 +223,20 @@ function AppContent() {
             family: member.familyId,
             memberToEdit: member
         });
+    };
+
+    const handleOpenDhirenProfile = async () => {
+        try {
+            const res = await memberApi.getById('6acb0d5d63ce8027eecd8ae8');
+            if (res?.success && res?.data) {
+                setDetailMember(res.data);
+            } else {
+                setDetailMember({ _id: '6acb0d5d63ce8027eecd8ae8' });
+            }
+        } catch (err) {
+            console.error('Failed to load member profile:', err);
+            setDetailMember({ _id: '6acb0d5d63ce8027eecd8ae8' });
+        }
     };
 
     // If initial session check is loading
@@ -439,9 +453,49 @@ function AppContent() {
                         flexWrap: 'wrap',
                         gap: '6px'
                     }}>
-                        <span>© {new Date().getFullYear()} All rights reserved by <strong style={{ color: 'var(--accent-amber)' }}>Dhirenkumar Rathod</strong></span>
+                        <span>
+                            © {new Date().getFullYear()} All rights reserved by{' '}
+                            <button
+                                onClick={handleOpenDhirenProfile}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0 2px',
+                                    color: 'var(--accent-amber)',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                    textUnderlineOffset: '3px',
+                                    fontSize: 'inherit',
+                                    transition: 'color 0.2s ease'
+                                }}
+                                title="સભ્ય પ્રોફાઇલ જુઓ (View Profile)"
+                            >
+                                Dhirenkumar Rathod
+                            </button>
+                        </span>
                         <span>•</span>
-                        <span>Created and developed by <strong style={{ color: 'var(--accent-amber)' }}>Dhirenkumar Rathod</strong></span>
+                        <span>
+                            Created and developed by{' '}
+                            <button
+                                onClick={handleOpenDhirenProfile}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0 2px',
+                                    color: 'var(--accent-amber)',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                    textUnderlineOffset: '3px',
+                                    fontSize: 'inherit',
+                                    transition: 'color 0.2s ease'
+                                }}
+                                title="સભ્ય પ્રોફાઇલ જુઓ (View Profile)"
+                            >
+                                Dhirenkumar Rathod
+                            </button>
+                        </span>
                     </div>
                 </div>
             </footer>
