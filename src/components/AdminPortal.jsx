@@ -26,7 +26,7 @@ import {
     Globe,
     LogOut
 } from 'lucide-react';
-import { approvalApi, authApi, villageApi } from '../services/api';
+import { authApi, villageApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const AdminPortal = ({
@@ -39,17 +39,7 @@ export const AdminPortal = ({
     const { user, isSuperAdmin, isVillageAdmin, canManageVillage } = useAuth();
     const canManageSelectedVillage = village?._id ? canManageVillage(village._id) : false;
 
-    const [adminTab, setAdminTab] = useState('approvals'); // 'approvals', 'users', 'sessions', 'villages'
-    const [statusFilter, setStatusFilter] = useState('pending'); // 'pending', 'approved', 'rejected', 'all'
-    const [requests, setRequests] = useState([]);
-    const [loadingRequests, setLoadingRequests] = useState(false);
-    const [actionLoadingId, setActionLoadingId] = useState(null);
-
-    // Reject Modal state
-    const [rejectModalOpen, setRejectModalOpen] = useState(false);
-    const [selectedRequestForReject, setSelectedRequestForReject] = useState(null);
-    const [rejectionReason, setRejectionReason] = useState('');
-    const [adminNotes, setAdminNotes] = useState('');
+    const [adminTab, setAdminTab] = useState('users'); // 'users', 'sessions', 'villages'
 
     // User management state (Super Admin & Village Admin)
     const [usersList, setUsersList] = useState([]);
@@ -114,23 +104,7 @@ export const AdminPortal = ({
         initialPassword: ''
     });
 
-    // Fetch requests
-    const fetchRequests = async () => {
-        setLoadingRequests(true);
-        try {
-            const res = await approvalApi.getAll({
-                status: statusFilter,
-                villageId: isVillageAdmin ? user?.assignedVillageId?._id || user?.assignedVillageId : undefined
-            });
-            if (res.success) {
-                setRequests(res.data);
-            }
-        } catch (err) {
-            console.error('Error fetching approval requests:', err);
-        } finally {
-            setLoadingRequests(false);
-        }
-    };
+
 
     // Fetch users (Super Admin & Village Admin)
     const fetchUsers = async () => {
@@ -305,11 +279,6 @@ export const AdminPortal = ({
     };
 
     useEffect(() => {
-        if (!isSuperAdmin && !isVillageAdmin) return;
-        fetchRequests();
-    }, [statusFilter, isVillageAdmin, user, isSuperAdmin]);
-
-    useEffect(() => {
         if (adminTab === 'users' && (isSuperAdmin || isVillageAdmin)) {
             fetchUsers();
         }
@@ -326,51 +295,6 @@ export const AdminPortal = ({
             }
         }
     }, [adminTab, isSuperAdmin, autoRefreshSessions]);
-
-    const handleApprove = async (reqId) => {
-        setActionLoadingId(reqId);
-        try {
-            const res = await approvalApi.approve(reqId, 'Approved by admin');
-            if (res.success) {
-                alert('અરજી મંજૂર કરવામાં આવી! (Request approved successfully)');
-                fetchRequests();
-                if (onRefreshStats) onRefreshStats();
-            }
-        } catch (err) {
-            alert('Approval error: ' + (err.response?.message || err.message));
-        } finally {
-            setActionLoadingId(null);
-        }
-    };
-
-    const handleOpenReject = (req) => {
-        setSelectedRequestForReject(req);
-        setRejectionReason('માહિતી ચકાસણીમાં ખામી જણાયેલ છે');
-        setAdminNotes('');
-        setRejectModalOpen(true);
-    };
-
-    const handleConfirmReject = async () => {
-        if (!selectedRequestForReject) return;
-        setActionLoadingId(selectedRequestForReject._id);
-        try {
-            const res = await approvalApi.reject(
-                selectedRequestForReject._id,
-                rejectionReason,
-                adminNotes
-            );
-            if (res.success) {
-                alert('અરજી નામંજૂર કરવામાં આવી (Request rejected)');
-                setRejectModalOpen(false);
-                setSelectedRequestForReject(null);
-                fetchRequests();
-            }
-        } catch (err) {
-            alert('Rejection error: ' + (err.response?.message || err.message));
-        } finally {
-            setActionLoadingId(null);
-        }
-    };
 
     const handleRoleChange = async (targetUserId, newRole, targetVillageId) => {
         try {
@@ -563,18 +487,7 @@ export const AdminPortal = ({
 
             {/* Admin Subtabs */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)' }}>
-                <button
-                    onClick={() => setAdminTab('approvals')}
-                    style={{
-                        padding: '10px 16px',
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        color: adminTab === 'approvals' ? 'var(--accent-amber)' : 'var(--text-secondary)',
-                        borderBottom: `2px solid ${adminTab === 'approvals' ? 'var(--accent-amber)' : 'transparent'}`
-                    }}
-                >
-                    મંજૂરી અરજીઓ (Approval Requests)
-                </button>
+
 
                 {(isSuperAdmin || isVillageAdmin) && (
                     <button
@@ -632,157 +545,7 @@ export const AdminPortal = ({
                 )}
             </div>
 
-            {/* TAB 1: APPROVAL REQUESTS */}
-            {adminTab === 'approvals' && (
-                <div>
-                    {/* Status Filter Buttons */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>સ્થિતિ:</span>
-                        {[
-                            { key: 'pending', label: 'બાકી (Pending)' },
-                            { key: 'approved', label: 'મંજૂર (Approved)' },
-                            { key: 'rejected', label: 'નામંજૂર (Rejected)' },
-                            { key: 'all', label: 'તમામ (All)' }
-                        ].map((item) => (
-                            <button
-                                key={item.key}
-                                onClick={() => setStatusFilter(item.key)}
-                                className="btn btn-secondary btn-sm"
-                                style={{
-                                    background: statusFilter === item.key ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                                    color: statusFilter === item.key ? 'var(--accent-amber)' : 'var(--text-secondary)',
-                                    borderColor: statusFilter === item.key ? 'var(--accent-amber)' : 'var(--border-subtle)'
-                                }}
-                            >
-                                {item.label}
-                            </button>
-                        ))}
-                    </div>
 
-                    {/* Requests list */}
-                    {loadingRequests ? (
-                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-                            અરજીઓ લોડ થઈ રહી છે... (Loading requests)
-                        </div>
-                    ) : requests.length === 0 ? (
-                        <div className="glass-panel" style={{ textAlign: 'center', padding: '40px' }}>
-                            <p style={{ color: 'var(--text-muted)' }}>
-                                કોઈ {statusFilter !== 'all' ? statusFilter : ''} અરજી ઉપલબ્ધ નથી.
-                            </p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            {requests.map((req) => {
-                                const isPending = req.status === 'pending';
-                                const isApproved = req.status === 'approved';
-                                const isRejected = req.status === 'rejected';
-
-                                // Can this admin approve this particular request?
-                                const canApproveThis = isSuperAdmin || (
-                                    isVillageAdmin && String(user?.assignedVillageId?._id || user?.assignedVillageId) === String(req.villageId?._id || req.villageId)
-                                );
-
-                                return (
-                                    <div
-                                        key={req._id}
-                                        className="glass-panel"
-                                        style={{
-                                            padding: '18px 22px',
-                                            border: '1px solid var(--border-subtle)'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <span className={`badge ${
-                                                    req.requestType === 'create'
-                                                        ? 'badge-emerald'
-                                                        : req.requestType === 'update'
-                                                        ? 'badge-amber'
-                                                        : 'badge-rose'
-                                                }`}>
-                                                    {req.requestType.toUpperCase()} {req.entityType.toUpperCase()}
-                                                </span>
-
-                                                <span className={`badge ${
-                                                    isPending ? 'badge-amber' : isApproved ? 'badge-emerald' : 'badge-rose'
-                                                }`}>
-                                                    {req.status.toUpperCase()}
-                                                </span>
-
-                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                    ગામ: <strong>{req.villageId?.name?.gu || req.villageId?.name?.en || 'બાસ્પા'}</strong>
-                                                </span>
-                                            </div>
-
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                {new Date(req.createdAt).toLocaleString('gu-IN')}
-                                            </div>
-                                        </div>
-
-                                        {/* Payload summary */}
-                                        <div style={{
-                                            marginTop: '12px',
-                                            padding: '12px',
-                                            background: 'rgba(0, 0, 0, 0.25)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            fontSize: '0.825rem'
-                                        }}>
-                                            <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                                                સભ્ય / કુટુંબ વિગતો:
-                                            </div>
-                                            <div style={{ color: 'var(--text-secondary)' }}>
-                                                નામ: <strong>{req.payload?.fullName?.gu || req.payload?.fullName?.en || '-'}</strong> •
-                                                અટક: <strong>{req.payload?.atak?.gu || req.payload?.atak?.en || '-'}</strong> •
-                                                ઘર નં: <strong>{req.payload?.houseNumber || '-'}</strong> •
-                                                મોબાઈલ: <strong>{req.payload?.mobileNumber || req.payload?.primaryMobile || '-'}</strong>
-                                            </div>
-                                            {req.rejectionReason && (
-                                                <div style={{ marginTop: '6px', color: '#FB7185' }}>
-                                                    નામંજૂરીનું કારણ: {req.rejectionReason}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Actions */}
-                                        {isPending && (
-                                            <div style={{
-                                                marginTop: '14px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'flex-end',
-                                                gap: '10px'
-                                            }}>
-                                                {canApproveThis ? (
-                                                    <>
-                                                        <button
-                                                            disabled={actionLoadingId === req._id}
-                                                            onClick={() => handleOpenReject(req)}
-                                                            className="btn btn-danger btn-sm"
-                                                        >
-                                                            <X size={14} /> નામંજૂર કરો (Reject)
-                                                        </button>
-                                                        <button
-                                                            disabled={actionLoadingId === req._id}
-                                                            onClick={() => handleApprove(req._id)}
-                                                            className="btn btn-success btn-sm"
-                                                        >
-                                                            <Check size={14} /> મંજૂર કરો (Approve & Commit to DB)
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                        (તમારા ગામ સિવાયની અરજી - મંજૂરી અધિકાર નથી)
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            )}
 
             {/* TAB 2: USER MANAGEMENT & PASSWORD SETTING */}
             {adminTab === 'users' && (isSuperAdmin || isVillageAdmin) && (
@@ -1885,56 +1648,7 @@ export const AdminPortal = ({
                 </div>
             )}
 
-            {/* REJECT MODAL */}
-            {rejectModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ padding: '24px' }}>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#FB7185', marginBottom: '12px' }}>
-                            અરજી નામંજૂર કરો / Reject Approval Request
-                        </h3>
-                        <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                            કૃપા કરીને નામંજૂર કરવાનું કારણ સ્પષ્ટ કરો:
-                        </p>
 
-                        <div style={{ marginBottom: '14px' }}>
-                            <label className="form-label">કારણ (Rejection Reason):</label>
-                            <input
-                                type="text"
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                                className="form-input"
-                                placeholder="દા.ત. ખોટી માહિતી / દસ્તાવેજ ખૂટે છે"
-                            />
-                        </div>
-
-                        <div style={{ marginBottom: '20px' }}>
-                            <label className="form-label">એડમિન નોંધ (Admin Notes):</label>
-                            <textarea
-                                value={adminNotes}
-                                onChange={(e) => setAdminNotes(e.target.value)}
-                                className="form-input"
-                                rows={3}
-                                placeholder="વધારાની નોંધ..."
-                            />
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            <button
-                                onClick={() => setRejectModalOpen(false)}
-                                className="btn btn-secondary"
-                            >
-                                રદ કરો (Cancel)
-                            </button>
-                            <button
-                                onClick={handleConfirmReject}
-                                className="btn btn-danger"
-                            >
-                                પુષ્ટિ કરો (Confirm Reject)
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* CREATE VILLAGE MODAL (SUPER ADMIN ONLY) */}
             {showCreateVillageModal && (

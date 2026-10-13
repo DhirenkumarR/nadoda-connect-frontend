@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="gu">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>૪૦૪ - પૃષ્ઠ મળ્યું નથી | Nadoda Rajput Connect</title>
+  <link rel="icon" type="image/png" href="./favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0B1120;
+      color: #F8FAFC;
+      font-family: 'Outfit', 'Noto Sans Gujarati', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      max-width: 520px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 20px;
+      padding: 40px 30px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(245, 158, 11, 0.15);
+    }
+
+    .badge-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 16px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(220, 38, 38, 0.15) 100%);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+    }
+
+    .code {
+      font-size: 3.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 50%, #EF4444 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #FFF;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 0.9rem;
+      color: #94A3B8;
+      line-height: 1.5;
+      margin-bottom: 26px;
+    }
+
+    .home-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+      color: #0F172A;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 13px 28px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+      cursor: pointer;
+    }
+
+    .home-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(245, 158, 11, 0.5);
+    }
+  </style>
+  <script>
+    // If hosted on GitHub Pages or static server, automatically redirect back to base
+    (function () {
+      var path = window.location.pathname;
+      var repo = '/nadoda-connect-frontend/';
+      // If we are on GitHub Pages or subfolder, route to the home page with tab preserved
+      if (path.indexOf(repo) !== -1) {
+        var subpath = path.replace(repo, '').replace(/^\/+/, '');
+        if (subpath) {
+          window.location.replace(repo + '#' + subpath);
+        } else {
+          window.location.replace(repo);
+        }
+      } else {
+        // Root hosting fallback
+        var clean = path.replace(/^\/+/, '');
+        if (clean && clean !== '404.html') {
+          window.location.replace('/#' + clean);
+        }
+      }
+    })();
+  </script>
+</head>
+
+<body>
+  <div class="card">
+    <div class="badge-icon">⚠️</div>
+    <div class="code">404</div>
+    <h1>પૃષ્ઠ મળ્યું નથી (Page Not Found)</h1>
+    <p>
+      તમે જે સરનામું (URL) પસંદ કર્યું છે તે અસ્તિત્વમાં નથી અથવા ખસેડવામાં આવ્યું છે. નીચેના બટન પર ક્લિક કરીને મુખ્ય પૃષ્ઠ પર પાછા જાઓ.
+    </p>
+    <a href="./" class="home-btn" id="homeLink">
+      🏠 હોમ પેજ પર જાઓ (Go to Home Page)
+    </a>
+  </div>
+
+  <script>
+    // Ensure button href links to appropriate base
+    var path = window.location.pathname;
+    var repo = '/nadoda-connect-frontend/';
+    if (path.indexOf(repo) !== -1) {
+      document.getElementById('homeLink').setAttribute('href', repo);
+    } else {
+      document.getElementById('homeLink').setAttribute('href', '/');
+    }
+  </script>
+</body>
+
+</html>

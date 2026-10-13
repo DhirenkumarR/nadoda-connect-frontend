@@ -258,6 +258,7 @@ a {
   justify-content: center;
   z-index: 1000;
   padding: 16px;
+  overflow-y: auto;
 }
 
 .modal-content {
@@ -266,8 +267,10 @@ a {
   border-radius: var(--radius-xl);
   max-width: 650px;
   width: 100%;
-  max-height: 90vh;
+  max-height: calc(100vh - 32px);
+  margin: auto;
   overflow-y: auto;
+  box-sizing: border-box;
   box-shadow: var(--shadow-lg);
   animation: fadeIn 0.2s ease-out;
 }

@@ -11,20 +11,39 @@ import { MyFamilyView } from './components/MyFamilyView';
 import { MemberDetailModal } from './components/MemberDetailModal';
 import { FamilyFormModal } from './components/FamilyFormModal';
 import { MemberFormModal } from './components/MemberFormModal';
+import { NotFoundScreen } from './components/NotFoundScreen';
 import { villageApi } from './services/api';
 
 const VALID_TABS = ['hierarchy', 'members', 'my-family', 'demographics', 'admin'];
+const BASE_PATH = import.meta.env.BASE_URL || '/';
+
+const buildTabUrl = (tab) => {
+    const base = BASE_PATH.endsWith('/') ? BASE_PATH : `${BASE_PATH}/`;
+    return `${base}${tab}`;
+};
 
 const getTabFromUrl = () => {
-    // 1. Check path (e.g. /members, /admin)
-    const path = window.location.pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
-    if (VALID_TABS.includes(path)) return path;
+    // 1. Check path (e.g. /nadoda-connect-frontend/members or /members)
+    let pathname = window.location.pathname;
+    if (BASE_PATH !== '/' && pathname.startsWith(BASE_PATH)) {
+        pathname = pathname.slice(BASE_PATH.length);
+    }
+    const cleanPath = pathname.replace(/^\/+/, '').split('/')[0].toLowerCase();
+    if (cleanPath && VALID_TABS.includes(cleanPath)) return cleanPath;
 
-    // 2. Check hash (e.g. #/members, #admin)
+    // 2. Check hash (e.g. #/members, #members)
     const hash = window.location.hash.replace(/^#\/?/, '').split('/')[0].toLowerCase();
-    if (VALID_TABS.includes(hash)) return hash;
+    if (hash && VALID_TABS.includes(hash)) return hash;
 
-    // 3. Check localStorage
+    // 3. If there is a non-empty path or hash that is NOT a valid tab, mark as not-found
+    if (cleanPath && !['', 'index.html', '404.html'].includes(cleanPath)) {
+        return 'not-found';
+    }
+    if (hash && hash !== '') {
+        return 'not-found';
+    }
+
+    // 4. Check localStorage fallback
     const saved = localStorage.getItem('nadoda_active_tab');
     if (saved && VALID_TABS.includes(saved)) return saved;
 
@@ -46,7 +65,7 @@ function AppContent() {
         if (newTab === 'admin' && !isSuperAdmin && !isVillageAdmin) return;
         setActiveTabState(newTab);
         localStorage.setItem('nadoda_active_tab', newTab);
-        const targetUrl = `/${newTab}`;
+        const targetUrl = buildTabUrl(newTab);
         if (window.location.pathname !== targetUrl) {
             window.history.pushState({ tab: newTab }, '', targetUrl);
         }
@@ -65,7 +84,7 @@ function AppContent() {
             const tab = getTabFromUrl();
             if (tab === 'admin' && !isSuperAdmin && !isVillageAdmin) {
                 setActiveTabState('hierarchy');
-                window.history.replaceState({ tab: 'hierarchy' }, '', '/hierarchy');
+                window.history.replaceState({ tab: 'hierarchy' }, '', buildTabUrl('hierarchy'));
                 return;
             }
             setActiveTabState(tab);
@@ -80,10 +99,11 @@ function AppContent() {
 
     // Keep URL path in sync on authenticated start
     useEffect(() => {
-        if (isAuthenticated) {
-            const currentPath = window.location.pathname.replace(/^\/+/, '').toLowerCase();
-            if (!currentPath && activeTab) {
-                window.history.replaceState({ tab: activeTab }, '', `/${activeTab}`);
+        if (isAuthenticated && VALID_TABS.includes(activeTab)) {
+            const currentPath = window.location.pathname;
+            const targetUrl = buildTabUrl(activeTab);
+            if (currentPath !== targetUrl) {
+                window.history.replaceState({ tab: activeTab }, '', targetUrl);
             }
         }
     }, [isAuthenticated, activeTab]);
@@ -98,6 +118,21 @@ function AppContent() {
     const [detailMember, setDetailMember] = useState(null);
     const [familyModal, setFamilyModal] = useState({ isOpen: false, initialAtak: null, familyToEdit: null });
     const [memberModal, setMemberModal] = useState({ isOpen: false, family: null, memberToEdit: null });
+
+    // Navigation target for HierarchyView
+    const [targetFamily, setTargetFamily] = useState(null);
+
+    const handleGoToFamily = (familyIdOrObj) => {
+        if (!familyIdOrObj) return;
+        setTargetFamily(familyIdOrObj);
+        setActiveTabState('hierarchy');
+        localStorage.setItem('nadoda_active_tab', 'hierarchy');
+        const targetUrl = buildTabUrl('hierarchy');
+        if (window.location.pathname !== targetUrl) {
+            window.history.pushState({ tab: 'hierarchy' }, '', targetUrl);
+        }
+        setDetailMember(null);
+    };
 
     // Fetch villages when user is authenticated
     useEffect(() => {
@@ -262,6 +297,8 @@ function AppContent() {
                                 village={selectedVillage}
                                 villageStats={villageStats}
                                 refreshTrigger={dataVersion}
+                                targetFamily={targetFamily}
+                                onClearTargetFamily={() => setTargetFamily(null)}
                                 onSelectMember={setDetailMember}
                                 onAddFamily={handleOpenAddFamily}
                                 onAddMember={handleOpenAddMember}
@@ -275,6 +312,7 @@ function AppContent() {
                                 village={selectedVillage}
                                 refreshTrigger={dataVersion}
                                 onSelectMember={setDetailMember}
+                                onGoToFamily={handleGoToFamily}
                                 onAddMember={handleOpenAddMember}
                                 onEditMember={handleOpenEditMember}
                             />
@@ -309,6 +347,14 @@ function AppContent() {
                                 onRefreshStats={triggerRefresh}
                             />
                         )}
+
+                        {/* 404 / Not Found view */}
+                        {!VALID_TABS.includes(activeTab) && (
+                            <NotFoundScreen
+                                onGoHome={() => handleTabChange('hierarchy')}
+                                onNavigateTab={handleTabChange}
+                            />
+                        )}
                     </>
                 )}
             </main>
@@ -317,7 +363,9 @@ function AppContent() {
             {detailMember && (
                 <MemberDetailModal
                     member={detailMember}
+                    village={selectedVillage}
                     onClose={() => setDetailMember(null)}
+                    onGoToFamily={handleGoToFamily}
                     onEdit={(mem) => {
                         handleOpenEditMember(mem);
                     }}
@@ -348,7 +396,7 @@ function AppContent() {
                     onClose={() => setMemberModal({ isOpen: false, family: null, memberToEdit: null })}
                     onSuccess={(updatedMem) => {
                         triggerRefresh();
-                        if (detailMember && updatedMem && String(detailMember._id) === String(updatedMem._id)) {
+                        if (updatedMem && memberModal.memberToEdit) {
                             setDetailMember(updatedMem);
                         }
                     }}
@@ -360,17 +408,40 @@ function AppContent() {
                 marginTop: 'auto',
                 borderTop: '1px solid var(--border-subtle)',
                 background: 'rgba(11, 17, 32, 0.95)',
-                padding: '18px 24px',
-                textAlign: 'center',
-                fontSize: '0.8rem',
+                padding: '20px 24px',
+                fontSize: '0.825rem',
                 color: 'var(--text-muted)'
             }}>
-                <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                    <div>
-                        <strong>શ્રી નાડોદા રાજપૂત સમાજ</strong> • Nadoda Rajput Connect Platform
+                <div style={{
+                    maxWidth: '1440px',
+                    margin: '0 auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>શ્રી નાડોદા રાજપૂત સમાજ</strong>
+                        <span>•</span>
+                        <span>Nadoda Rajput Connect Platform</span>
+                        <span>•</span>
+                        <span>Digital Community Directory</span>
                     </div>
-                    <div>
-                        ડેટાબેઝ આધારિત વહીવટ & વંશાવળી નિર્દેશિકા • Digital Community Directory
+
+                    <div style={{
+                        fontSize: '0.785rem',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexWrap: 'wrap',
+                        gap: '6px'
+                    }}>
+                        <span>© {new Date().getFullYear()} All rights reserved by <strong style={{ color: 'var(--accent-amber)' }}>Dhirenkumar Rathod</strong></span>
+                        <span>•</span>
+                        <span>Created and developed by <strong style={{ color: 'var(--accent-amber)' }}>Dhirenkumar Rathod</strong></span>
                     </div>
                 </div>
             </footer>

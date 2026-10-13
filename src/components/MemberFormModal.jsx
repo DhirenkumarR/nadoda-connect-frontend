@@ -37,27 +37,57 @@ export const MemberFormModal = ({
     const isEdit = Boolean(memberToEdit);
 
     const [familiesList, setFamiliesList] = useState([]);
-    const [selectedFamilyId, setSelectedFamilyId] = useState(
-        memberToEdit?.familyId?._id || memberToEdit?.familyId || family?._id || ''
-    );
+
+    const resolveInitialFamilyId = () => {
+        if (memberToEdit?.familyId?._id) return memberToEdit.familyId._id;
+        if (typeof memberToEdit?.familyId === 'string') return memberToEdit.familyId;
+        if (family?._id) return family._id;
+        if (typeof family === 'string') return family;
+        return '';
+    };
+
+    const [selectedFamilyId, setSelectedFamilyId] = useState(resolveInitialFamilyId);
 
     const [formData, setFormData] = useState({
-        serialNumber: memberToEdit?.serialNumber || '',
+        serialNumber: (memberToEdit?.serialNumber !== undefined && memberToEdit?.serialNumber !== null) ? memberToEdit.serialNumber : '',
         fullNameGu: memberToEdit?.fullName?.gu || '',
         fullNameEn: memberToEdit?.fullName?.en || '',
         relationGu: memberToEdit?.relationWithHead?.gu || 'પોતે',
         genderKey: memberToEdit?.gender?.key || 'male',
-        age: memberToEdit?.age || '',
+        age: (memberToEdit?.age !== undefined && memberToEdit?.age !== null) ? memberToEdit.age : '',
         qualification: memberToEdit?.education?.qualification || '',
-        isStudying: memberToEdit?.education?.isStudying || false,
+        isStudying: Boolean(memberToEdit?.education?.isStudying),
         maritalStatusKey: memberToEdit?.maritalStatus?.key || 'married',
         occupationTitle: memberToEdit?.occupation?.title || 'ખેતી',
         occupationCategory: memberToEdit?.occupation?.category || 'agriculture',
         workCity: memberToEdit?.occupation?.workCity || family?.address?.currentCity?.gu || village?.name?.gu || '',
         mobileNumber: memberToEdit?.mobileNumber || '',
         email: memberToEdit?.email || '',
-        isFamilyHead: memberToEdit?.isFamilyHead || false
+        isFamilyHead: Boolean(memberToEdit?.isFamilyHead)
     });
+
+    useEffect(() => {
+        if (memberToEdit) {
+            setSelectedFamilyId(resolveInitialFamilyId());
+            setFormData({
+                serialNumber: (memberToEdit.serialNumber !== undefined && memberToEdit.serialNumber !== null) ? memberToEdit.serialNumber : '',
+                fullNameGu: memberToEdit.fullName?.gu || '',
+                fullNameEn: memberToEdit.fullName?.en || '',
+                relationGu: memberToEdit.relationWithHead?.gu || 'પોતે',
+                genderKey: memberToEdit.gender?.key || 'male',
+                age: (memberToEdit.age !== undefined && memberToEdit.age !== null) ? memberToEdit.age : '',
+                qualification: memberToEdit.education?.qualification || '',
+                isStudying: Boolean(memberToEdit.education?.isStudying),
+                maritalStatusKey: memberToEdit.maritalStatus?.key || 'married',
+                occupationTitle: memberToEdit.occupation?.title || 'ખેતી',
+                occupationCategory: memberToEdit.occupation?.category || 'agriculture',
+                workCity: memberToEdit.occupation?.workCity || family?.address?.currentCity?.gu || village?.name?.gu || '',
+                mobileNumber: memberToEdit.mobileNumber || '',
+                email: memberToEdit.email || '',
+                isFamilyHead: Boolean(memberToEdit.isFamilyHead)
+            });
+        }
+    }, [memberToEdit]);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -99,7 +129,12 @@ export const MemberFormModal = ({
         setLoading(true);
         setError('');
 
-        const targetFamId = selectedFamilyId || family?._id;
+        const targetFamId = selectedFamilyId
+            || memberToEdit?.familyId?._id
+            || (typeof memberToEdit?.familyId === 'string' ? memberToEdit.familyId : '')
+            || family?._id
+            || (typeof family === 'string' ? family : '');
+
         if (!targetFamId) {
             setError('Please select or specify a family for this member');
             setLoading(false);
@@ -114,7 +149,11 @@ export const MemberFormModal = ({
             divorced: 'છૂટાછેડા'
         };
 
-        const resolvedVillageId = village?._id || family?.villageId?._id || family?.villageId || memberToEdit?.villageId?._id || memberToEdit?.villageId;
+        const resolvedVillageId = village?._id
+            || memberToEdit?.villageId?._id
+            || (typeof memberToEdit?.villageId === 'string' ? memberToEdit.villageId : '')
+            || family?.villageId?._id
+            || (typeof family?.villageId === 'string' ? family?.villageId : '');
 
         const payload = {
             villageId: resolvedVillageId,
@@ -166,8 +205,20 @@ export const MemberFormModal = ({
         }
     };
 
+    const resolvedFamilyObj = (family && typeof family === 'object' && family.houseNumber)
+        ? family
+        : (memberToEdit?.familyId && typeof memberToEdit.familyId === 'object' && memberToEdit.familyId.houseNumber)
+            ? memberToEdit.familyId
+            : null;
+
+    const resolvedFamilyLabel = resolvedFamilyObj
+        ? `ઘર નં. ${resolvedFamilyObj.houseNumber} - ${resolvedFamilyObj.atak?.gu || memberToEdit?.atak?.gu || ''} (${resolvedFamilyObj.headMemberId?.fullName?.gu || 'કુટુંબ'})`
+        : (memberToEdit?.houseNumber)
+            ? `ઘર નં. ${memberToEdit.houseNumber} - ${memberToEdit.atak?.gu || ''} (કુટુંબ)`
+            : null;
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1200, backdropFilter: 'blur(6px)' }}>
             <div
                 className="modal-content"
                 onClick={(e) => e.stopPropagation()}
@@ -203,11 +254,11 @@ export const MemberFormModal = ({
                     {/* Family selector */}
                     <div>
                         <label className="form-label">કુટુંબ પસંદ કરો (Family Selection)*</label>
-                        {family ? (
+                        {resolvedFamilyLabel ? (
                             <input
                                 type="text"
                                 disabled
-                                value={`ઘર નં. ${family.houseNumber} - ${family.atak?.gu} (${family.headMemberId?.fullName?.gu || 'કુટુંબ'})`}
+                                value={resolvedFamilyLabel}
                                 className="form-input"
                                 style={{ opacity: 0.8 }}
                             />

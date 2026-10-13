@@ -150,46 +150,7 @@ export const memberApi = {
         })
 };
 
-// 4. Approval Requests API
-export const approvalApi = {
-    getAll: (params = {}) => {
-        const query = new URLSearchParams();
-        Object.entries(params).forEach(([key, val]) => {
-            if (val !== undefined && val !== null && val !== '') {
-                query.append(key, val);
-            }
-        });
-        const qs = query.toString();
-        return request(`/approvals${qs ? `?${qs}` : ''}`);
-    },
-    getPending: (params = {}) => {
-        const query = new URLSearchParams();
-        Object.entries(params).forEach(([key, val]) => {
-            if (val !== undefined && val !== null && val !== '') {
-                query.append(key, val);
-            }
-        });
-        const qs = query.toString();
-        return request(`/approvals/pending${qs ? `?${qs}` : ''}`);
-    },
-    submit: (payload) =>
-        request('/approvals/submit', {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        }),
-    approve: (id, adminNotes = '') =>
-        request(`/approvals/${id}/approve`, {
-            method: 'PATCH',
-            body: JSON.stringify({ adminNotes })
-        }),
-    reject: (id, rejectionReason, adminNotes = '') =>
-        request(`/approvals/${id}/reject`, {
-            method: 'PATCH',
-            body: JSON.stringify({ rejectionReason, adminNotes })
-        })
-};
-
-// 5. Auth & Users API
+// 4. Auth & Users API
 export const authApi = {
     login: (identifier, password) =>
         request('/auth/login', {

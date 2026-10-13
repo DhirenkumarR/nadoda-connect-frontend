@@ -16,7 +16,8 @@ import {
     Edit,
     Plus,
     UserCheck,
-    Trash2
+    Trash2,
+    Home
 } from 'lucide-react';
 import { memberApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +25,7 @@ import { useAuth } from '../context/AuthContext';
 export const MembersDirectory = ({
     village,
     onSelectMember,
+    onGoToFamily,
     onAddMember,
     onEditMember,
     refreshTrigger = 0
@@ -387,9 +389,29 @@ export const MembersDirectory = ({
                                                 {mem.serialNumber ? `#${mem.serialNumber}` : '-'}
                                             </td>
                                             <td style={{ padding: '12px 14px' }}>
-                                                <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>
-                                                    {mem.houseNumber}
-                                                </span>
+                                                {mem.familyId ? (
+                                                    <button
+                                                        onClick={() => onGoToFamily && onGoToFamily(mem.familyId?._id || mem.familyId)}
+                                                        className="badge badge-amber"
+                                                        style={{
+                                                            fontSize: '0.75rem',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            cursor: 'pointer',
+                                                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                                                            background: 'rgba(245, 158, 11, 0.15)'
+                                                        }}
+                                                        title="આ સભ્યના કુટુંબની યાદી જુઓ (Go to Family)"
+                                                    >
+                                                        <Home size={11} />
+                                                        <span>ઘર {mem.houseNumber}</span>
+                                                    </button>
+                                                ) : (
+                                                    <span className="badge badge-amber" style={{ fontSize: '0.75rem' }}>
+                                                        {mem.houseNumber}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td style={{ padding: '12px 14px', fontWeight: '600', color: '#FFF' }}>
                                                 {mem.atak?.gu}
@@ -461,6 +483,24 @@ export const MembersDirectory = ({
                                                     >
                                                         પ્રોફાઇલ
                                                     </button>
+                                                    {onGoToFamily && mem.familyId && (
+                                                        <button
+                                                            onClick={() => onGoToFamily(mem.familyId?._id || mem.familyId)}
+                                                            className="btn btn-secondary btn-sm"
+                                                            style={{
+                                                                fontSize: '0.725rem',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                borderColor: 'rgba(245, 158, 11, 0.4)',
+                                                                color: 'var(--accent-amber)'
+                                                            }}
+                                                            title="આ સભ્યના કુટુંબની યાદી જુઓ (Go to Family)"
+                                                        >
+                                                            <Home size={12} />
+                                                            <span>કુટુંબ</span>
+                                                        </button>
+                                                    )}
                                                     {canManage && (
                                                         <>
                                                             <button
@@ -574,6 +614,26 @@ export const MembersDirectory = ({
                                         >
                                             પ્રોફાઇલ જુઓ
                                         </button>
+                                        {onGoToFamily && mem.familyId && (
+                                            <button
+                                                onClick={() => onGoToFamily(mem.familyId?._id || mem.familyId)}
+                                                className="btn btn-secondary btn-sm"
+                                                style={{
+                                                    flex: 1,
+                                                    fontSize: '0.75rem',
+                                                    justifyContent: 'center',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    borderColor: 'rgba(245, 158, 11, 0.4)',
+                                                    color: 'var(--accent-amber)'
+                                                }}
+                                                title="આ સભ્યના કુટુંબની યાદી જુઓ"
+                                            >
+                                                <Home size={13} />
+                                                <span>કુટુંબ જુઓ</span>
+                                            </button>
+                                        )}
                                         {canManage && (
                                             <>
                                                 <button
@@ -693,7 +753,8 @@ export const MembersDirectory = ({
                                     borderTop: '1px solid var(--border-subtle)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'space-between'
+                                    justifyContent: 'space-between',
+                                    gap: '6px'
                                 }}>
                                     <button
                                         onClick={() => onSelectMember && onSelectMember(mem)}
@@ -702,6 +763,24 @@ export const MembersDirectory = ({
                                     >
                                         વિગત જુઓ (Profile)
                                     </button>
+                                    {onGoToFamily && mem.familyId && (
+                                        <button
+                                            onClick={() => onGoToFamily(mem.familyId?._id || mem.familyId)}
+                                            className="btn btn-secondary btn-sm"
+                                            style={{
+                                                fontSize: '0.75rem',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                borderColor: 'rgba(245, 158, 11, 0.4)',
+                                                color: 'var(--accent-amber)'
+                                            }}
+                                            title="કુટુંબ જુઓ (Go to Family)"
+                                        >
+                                            <Home size={12} />
+                                            <span>કુટુંબ</span>
+                                        </button>
+                                    )}
                                     {canManage && (
                                         <div style={{ display: 'flex', gap: '4px', marginLeft: '6px' }}>
                                             <button

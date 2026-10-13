@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { KeyRound, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, RefreshCw, X } from 'lucide-react';
 import { authApi } from '../services/api';
 
@@ -51,30 +52,42 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
         }
     };
 
-    return (
-        <div className="modal-overlay" style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(11, 17, 32, 0.85)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px'
-        }}>
-            <div className="modal-content" style={{
-                maxWidth: '440px',
-                width: '100%',
-                background: 'rgba(19, 30, 54, 0.98)',
-                border: '1px solid var(--border-hover)',
-                borderRadius: 'var(--radius-xl)',
-                padding: '24px',
-                boxShadow: 'var(--shadow-lg), 0 0 35px rgba(245, 158, 11, 0.15)',
-                animation: 'fadeIn 0.2s ease-out'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    return createPortal(
+        <div
+            className="modal-overlay"
+            onClick={onClose}
+            style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 99999,
+                backgroundColor: 'rgba(11, 17, 32, 0.85)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+                overflowY: 'auto'
+            }}
+        >
+            <div
+                className="modal-content"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    maxWidth: '460px',
+                    width: '100%',
+                    background: 'rgba(19, 30, 54, 0.98)',
+                    border: '1px solid var(--border-hover)',
+                    borderRadius: 'var(--radius-xl)',
+                    padding: '24px',
+                    boxShadow: 'var(--shadow-lg), 0 0 35px rgba(245, 158, 11, 0.25)',
+                    maxHeight: 'calc(100vh - 32px)',
+                    overflowY: 'auto',
+                    margin: 'auto'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                         <div style={{
                             width: '38px',
                             height: '38px',
@@ -83,15 +96,16 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--accent-amber)'
+                            color: 'var(--accent-amber)',
+                            flexShrink: 0
                         }}>
                             <KeyRound size={20} />
                         </div>
-                        <div>
-                            <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#FFF', margin: 0 }}>
+                        <div style={{ minWidth: 0 }}>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#FFF', margin: 0, wordBreak: 'break-word' }}>
                                 પાસવર્ડ બદલો (Change Password)
                             </h3>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                                 તમારા એકાઉન્ટનો પાસવર્ડ અપડેટ કરો
                             </p>
                         </div>
@@ -99,12 +113,18 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                     <button
                         type="button"
                         onClick={onClose}
+                        title="બંધ કરો (Close)"
                         style={{
-                            background: 'transparent',
-                            border: 'none',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
                             color: 'var(--text-muted)',
                             cursor: 'pointer',
-                            padding: '4px'
+                            padding: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
                         }}
                     >
                         <X size={18} />
@@ -244,6 +264,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

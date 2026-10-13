@@ -23,6 +23,8 @@ export const HierarchyView = ({
     village,
     villageStats,
     refreshTrigger = 0,
+    targetFamily = null,
+    onClearTargetFamily,
     onSelectMember,
     onAddFamily,
     onAddMember,
@@ -71,6 +73,33 @@ export const HierarchyView = ({
         }
     };
 
+    // Navigate to target family when requested from external components (e.g. MembersDirectory)
+    useEffect(() => {
+        if (targetFamily) {
+            const famId = targetFamily._id || targetFamily;
+            setLoadingFamilyDetail(true);
+            familyApi.getById(famId).then(res => {
+                if (res.success && res.data) {
+                    const fam = res.data;
+                    setSelectedFamily(fam);
+                    setFamilyDetail(fam);
+                    if (fam.atak) {
+                        setSelectedAtak({
+                            atak: fam.atak,
+                            count: fam.totalMembersCount || (fam.members ? fam.members.length : 1),
+                            kuldevi: fam.kuldevi
+                        });
+                    }
+                }
+            }).catch(err => {
+                console.error('Error opening target family in hierarchy:', err);
+            }).finally(() => {
+                setLoadingFamilyDetail(false);
+                if (onClearTargetFamily) onClearTargetFamily();
+            });
+        }
+    }, [targetFamily]);
+
     const handleDeleteMember = async (mem) => {
         const name = mem.fullName?.gu || mem.fullName?.en || 'આ સભ્ય';
         const confirmDelete = window.confirm(`શું તમે ખરેખર સભ્ય "${name}" ને ડિલીટ કરવા માંગો છો?\nAre you sure you want to delete member "${name}"?`);
@@ -90,11 +119,13 @@ export const HierarchyView = ({
 
     // Reset hierarchy when village changes
     useEffect(() => {
-        setSelectedAtak(null);
-        setSelectedFamily(null);
-        setFamilyPage(1);
-        setFamilySearch('');
-        setCityFilter('');
+        if (!targetFamily) {
+            setSelectedAtak(null);
+            setSelectedFamily(null);
+            setFamilyPage(1);
+            setFamilySearch('');
+            setCityFilter('');
+        }
     }, [village?._id]);
 
     const fetchFamilies = async () => {
